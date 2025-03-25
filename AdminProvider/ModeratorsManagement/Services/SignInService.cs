@@ -1,10 +1,8 @@
 ﻿using Microsoft.AspNetCore.Identity;
-using AdminProvider.ModeratorsManagement.Interfaces;
-using AdminProvider.UsersManagement.Data.Entities;
-using AdminProvider.UsersManagement.Interfaces;
 using AdminProvider.ModeratorsManagement.Models.Responses;
-using AdminProvider.ModeratorsManagement.Data.Entities;
 using AuthenticationProvider.Models.Requests;
+using AdminProvider.ModeratorsManagement.Interfaces.Services;
+using AdminProvider.ModeratorsManagement.Interfaces.Utillities;
 
 namespace AdminProvider.ModeratorsManagement.Services;
 
@@ -13,20 +11,20 @@ namespace AdminProvider.ModeratorsManagement.Services;
 /// </summary>
 public class SignInService : ISignInService
 {
-    private readonly IAdminRepository _adminRepository;
+    private readonly IConfiguration _configuration;
     private readonly IAccessTokenService _accessTokenService;
-    private readonly IPasswordHasher<AdminEntity> _passwordHasher;
+    private readonly ICustomPasswordHasher<AdminEntity> _customPasswordHasher;
     private readonly ILogger<SignInService> _logger;
 
     public SignInService(
-        IUserRepository adminRepository,
+        IConfiguration configuration,
         IAccessTokenService accessTokenService,
-        IPasswordHasher<UserEntity> passwordHasher,
+        ICustomPasswordHasher<AdminEntity> customPasswordHasher,
         ILogger<SignInService> logger)
     {
-        _adminRepository = adminRepository ?? throw new ArgumentNullException(nameof(adminRepository));
+        _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
         _accessTokenService = accessTokenService ?? throw new ArgumentNullException(nameof(accessTokenService));
-        _passwordHasher = passwordHasher ?? throw new ArgumentNullException(nameof(passwordHasher));
+        _customPasswordHasher = customPasswordHasher ?? throw new ArgumentNullException(nameof(customPasswordHasher));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
     }
 
@@ -60,8 +58,10 @@ public class SignInService : ISignInService
 
         try
         {
-            // Retrieve the user by email
-            var adminEntity = await _adminRepository.GetByEmailAsync(signInRequest.Email);
+            // Retrieve the admins from the configuration (appsettings.json)
+            var admins = _configuration.GetSection("Admins").Get<List<AdminEntity>>() ?? new List<AdminEntity>();
+            var adminEntity = admins.FirstOrDefault(a => a.Email == signInRequest.Email);
+
             if (adminEntity == null)
             {
                 _logger.LogWarning("Sign-in failed: User not found for provided email.");
@@ -92,7 +92,6 @@ public class SignInService : ISignInService
                     Success = false,
                     Message = "Inloggning lyckades.",
                     Admin = adminEntity, // You may exclude the user if you only rely on the cookie
-
                 };
             }
 
@@ -102,7 +101,6 @@ public class SignInService : ISignInService
                 Success = true,
                 Message = "Inloggning lyckades.",
                 Admin = adminEntity, // You may exclude the user if you only rely on the cookie
-
             };
         }
         catch (Exception ex)
@@ -118,7 +116,9 @@ public class SignInService : ISignInService
 
     private bool ValidatePassword(AdminEntity admin, string providedPassword)
     {
-        var passwordResult = _passwordHasher.VerifyHashedPassword(admin, admin.PasswordHash, providedPassword);
-        return passwordResult == PasswordVerificationResult.Success;
+        // Use the custom password hasher to validate the provided password against the stored hash
+        bool isValid = _customPasswordHasher.VerifyHashedPassword(admin, admin.PasswordHash, providedPassword);
+        return isValid;
     }
+
 }

@@ -1,14 +1,11 @@
-﻿using AdminProvider.ModeratorsManagement.Data.Entities;
-using AdminProvider.UsersManagement.Data.Entities;
-
-namespace AdminProvider.ModeratorsManagement.Interfaces;
+﻿namespace AdminProvider.ModeratorsManagement.Interfaces.Services;
 
 public interface IAccessTokenService
 {
 
     Task<string> GenerateAccessToken(AdminEntity admin);
 
-    string GetUserIdFromToken(string token);
+    string GetAdminIdFromToken(string token);
 
     bool ValidateAccessToken(string token);
 

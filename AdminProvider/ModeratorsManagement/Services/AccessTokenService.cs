@@ -3,16 +3,14 @@ using Microsoft.IdentityModel.Tokens;
 using System.IdentityModel.Tokens.Jwt;
 using System.Security.Claims;
 using System.Text;
-using AdminProvider.ModeratorsManagement.Interfaces;
 using AdminProvider.ModeratorsManagement.Models.Tokens;
-using AdminProvider.ModeratorsManagement.Data.Entities;
+using AdminProvider.ModeratorsManagement.Interfaces.Services;
 
 namespace AdminProvider.ModeratorsManagement.Services;
 
 public class AccessTokenService : IAccessTokenService
 {
     private readonly IConfiguration _configuration;
-    private readonly IAdminRepository _adminRepository;
     private readonly IHttpContextAccessor _httpContextAccessor;
     private readonly ILogger<AccessTokenService> _logger;
     private readonly IMemoryCache _memoryCache;
@@ -23,10 +21,9 @@ public class AccessTokenService : IAccessTokenService
 
     private readonly List<string> _cacheKeys = new List<string>(); // Added to track cache keys
 
-    public AccessTokenService(IConfiguration configuration, IAdminRepository adminRepository, ILogger<AccessTokenService> logger, IHttpContextAccessor httpContextAccessor, IMemoryCache memoryCache)
+    public AccessTokenService(IConfiguration configuration, ILogger<AccessTokenService> logger, IHttpContextAccessor httpContextAccessor, IMemoryCache memoryCache)
     {
         _configuration = configuration ?? throw new ArgumentNullException(nameof(configuration));
-        _adminRepository = adminRepository;
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
         _httpContextAccessor = httpContextAccessor ?? throw new ArgumentNullException(nameof(httpContextAccessor));
         _memoryCache = memoryCache ?? throw new ArgumentNullException(nameof(memoryCache));
@@ -221,7 +218,7 @@ public class AccessTokenService : IAccessTokenService
             UserAgent = userAgent
         };
     }
-    public string GetUserIdFromToken(string token)
+    public string GetAdminIdFromToken(string token)
     {
         try
         {

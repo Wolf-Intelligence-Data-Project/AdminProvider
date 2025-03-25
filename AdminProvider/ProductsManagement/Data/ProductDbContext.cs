@@ -1,5 +1,5 @@
-﻿using AdminProvider.ProductsManagement.Data.Entities;
-using Microsoft.EntityFrameworkCore;
+﻿using Microsoft.EntityFrameworkCore;
+using AdminProvider.ProductsManagement.Data.Entities;
 
 namespace AdminProvider.ProductsManagement.Data;
 
@@ -12,16 +12,17 @@ public class ProductDbContext : DbContext
     {
     }
 
+    // OnModelCreating is optional if you are not managing tables but just querying
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         base.OnModelCreating(modelBuilder);
 
         modelBuilder.Entity<ProductEntity>(entity =>
         {
-            entity.ToTable("Products"); // Specify the table name in the database
+            // Just for querying, no schema management
             entity.HasKey(e => e.ProductId); // Define ProductId as primary key
 
-            // Define other properties' column mappings, if necessary
+            // Define properties' column mappings
             entity.Property(e => e.CompanyName).IsRequired();
             entity.Property(e => e.OrganizationNumber).IsRequired();
             entity.Property(e => e.Address).IsRequired();

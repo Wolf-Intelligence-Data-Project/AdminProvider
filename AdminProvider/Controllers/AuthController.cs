@@ -7,4 +7,6 @@ namespace AdminProvider.Controllers;
 [ApiController]
 public class AuthController : ControllerBase
 {
+
+
 }
