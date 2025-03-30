@@ -18,7 +18,6 @@
 
   <ItemGroup>
     <Folder Include="OrdersManagement\Repositories\" />
-    <Folder Include="ProductsManagement\Models\" />
   </ItemGroup>
 
 </Project>

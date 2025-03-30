@@ -10,7 +10,8 @@ namespace AdminProvider.ModeratorsManagement.Utillities
         private const int HashSize = 32; // 256-bit hash
         private const int Iterations = 10000; // PBKDF2 iterations
 
-        public string HashPassword(AdminEntity user, string password)
+        // Remove 'static' keyword here
+        public string HashPassword(string password)
         {
             // Generate a random salt
             byte[] salt;
@@ -20,7 +21,7 @@ namespace AdminProvider.ModeratorsManagement.Utillities
                 rng.GetBytes(salt);
             }
 
-            // Compute the hash using PBKDF2
+            // Compute the hash using PBKDF2 (with SHA-1)
             using (var pbkdf2 = new Rfc2898DeriveBytes(password, salt, Iterations, HashAlgorithmName.SHA1))
             {
                 byte[] hash = pbkdf2.GetBytes(HashSize);
@@ -30,6 +31,7 @@ namespace AdminProvider.ModeratorsManagement.Utillities
                 Buffer.BlockCopy(salt, 0, hashBytes, 0, SaltSize);
                 Buffer.BlockCopy(hash, 0, hashBytes, SaltSize, HashSize);
 
+                // Return the hash as a base64 string
                 return Convert.ToBase64String(hashBytes);
             }
         }
@@ -53,12 +55,12 @@ namespace AdminProvider.ModeratorsManagement.Utillities
                 {
                     if (storedHash[i] != computedHash[i])
                     {
-                        return false;
+                        return false;  // The password does not match
                     }
                 }
             }
 
-            return true;
+            return true;  // The password matches
         }
     }
 }

@@ -1,5 +1,6 @@
 ﻿using AdminProvider.ProductsManagement.Data.Entities;
 using AdminProvider.ProductsManagement.Interfaces;
+using AdminProvider.ProductsManagement.Models;
 using Microsoft.Identity.Client;
 using OfficeOpenXml;
 using LicenseContext = OfficeOpenXml.LicenseContext;
@@ -14,24 +15,13 @@ public class ProductService : IProductService
         _productRepository = productRepository;
     }
 
-    public async Task<int> GetAllProductsCountAsync()
+    public async Task<ProductsCountResponse> GetProductsCountAsync()
     {
-        int count = await _productRepository.GetTotalProductCountAsync();
+        var count = await _productRepository.GetProductCountAsync();
 
         return count;
     }
-    public async Task<int> GetUnsoldProductsCountAsync()
-    {
-        int count = await _productRepository.GetUnsoldProductCountAsync();
 
-        return count;
-    }
-    public async Task<int> GetSoldProductsCountAsync()
-    {
-        int count = await _productRepository.GetSoldProductCountAsync();
-
-        return count;
-    }
     public async Task ImportProductsFromExcelAsync(IFormFile file)
     {
         if (file == null || file.Length == 0)

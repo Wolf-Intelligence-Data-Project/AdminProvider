@@ -49,7 +49,7 @@ public class AdminService : IAdminService
         _emailService.SendTemporaryPasswordEmail(newModerator.Email, tempPassword);
 
         // Hash and store password
-        newModerator.PasswordHash = _customPasswordHasher.HashPassword(newModerator, tempPassword);
+        newModerator.PasswordHash = _customPasswordHasher.HashPassword(tempPassword);
 
         // Ensure that the user must change the password on first login
         newModerator.PasswordLastChangedAt = null;
@@ -108,7 +108,7 @@ public class AdminService : IAdminService
         }
 
         // Hash new password and update record
-        user.PasswordHash = _customPasswordHasher.HashPassword(user, newPassword);
+        user.PasswordHash = _customPasswordHasher.HashPassword(newPassword);
         user.PasswordLastChangedAt = DateTime.UtcNow; // Mark first-time password change
 
         SaveModerators(admins);

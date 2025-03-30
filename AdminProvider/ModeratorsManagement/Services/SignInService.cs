@@ -83,15 +83,13 @@ public class SignInService : ISignInService
                 };
             }
 
-            // Generate access token and store in HTTP-only cookie
-            var token = _accessTokenService.GenerateAccessToken(adminEntity);
+            string token = await _accessTokenService.GenerateAccessToken(adminEntity);
             if (token == null)
             {
                 return new SignInResponse
                 {
                     Success = false,
                     Message = "Inloggning lyckades.",
-                    Admin = adminEntity, // You may exclude the user if you only rely on the cookie
                 };
             }
 
@@ -100,7 +98,7 @@ public class SignInService : ISignInService
             {
                 Success = true,
                 Message = "Inloggning lyckades.",
-                Admin = adminEntity, // You may exclude the user if you only rely on the cookie
+                Jwt = token
             };
         }
         catch (Exception ex)

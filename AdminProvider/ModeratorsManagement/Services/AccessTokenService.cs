@@ -73,23 +73,26 @@ public class AccessTokenService : IAccessTokenService
         _memoryCache.Set(IpCacheKey + admin.AdminId, userIpInfo.IpAddress, TimeSpan.FromHours(1));
         _cacheKeys.Add(IpCacheKey + admin.AdminId); // Track IP cache key
 
-        _httpContextAccessor.HttpContext?.Response?.Cookies.Append("AccessToken", tokenString, new CookieOptions
-        {
-            HttpOnly = true,
-            Secure = true,
-            SameSite = SameSiteMode.None,
-            Expires = DateTime.Now.AddHours(1)
-        });
-
         _logger.LogInformation($"Generated new access token for user {admin.FirstName}.");
-
         return tokenString;
     }
 
+
+    //_httpContextAccessor.HttpContext?.Response?.Cookies.Append("AccessToken", tokenString, new CookieOptions
+    //{
+    //    HttpOnly = true,
+    //    Secure = true,
+    //    SameSite = SameSiteMode.None,
+    //    Expires = DateTime.Now.AddHours(1)
+    //});
     public bool ValidateAccessToken(string token)
     {
         try
         {
+            if (_httpContextAccessor.HttpContext == null)
+            {
+                _logger.LogError("HttpContext is null.");
+            }
             token ??= _httpContextAccessor.HttpContext?.Request?.Cookies["AccessToken"] ?? string.Empty;
 
 

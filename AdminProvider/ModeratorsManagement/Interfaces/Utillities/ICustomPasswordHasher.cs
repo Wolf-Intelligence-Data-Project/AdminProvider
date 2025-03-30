@@ -8,6 +8,6 @@ namespace AdminProvider.ModeratorsManagement.Interfaces.Utillities;
 /// <typeparam name="TUser"></typeparam>
 public interface ICustomPasswordHasher<TUser>
 {
-    string HashPassword(TUser user, string password);
-    bool VerifyHashedPassword(TUser user, string hashedPassword, string providedPassword);
+    string HashPassword(string password);
+    bool VerifyHashedPassword(AdminEntity user, string hashedPassword, string providedPassword);
 }

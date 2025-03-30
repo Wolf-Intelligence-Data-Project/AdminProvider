@@ -33,8 +33,9 @@ builder.Services.AddHttpClient();
 builder.Services.AddScoped<IAccessTokenService, AccessTokenService>();
 builder.Services.AddScoped<ICustomPasswordHasher<AdminEntity>, CustomPasswordHasher>();
 
-
+builder.Services.AddScoped<ISignOutService, SignOutService>();
 builder.Services.AddScoped<ISignInService, SignInService>();
+
 builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 
@@ -53,6 +54,21 @@ builder.Services.AddDbContext<OrderDbContext>(options =>
 builder.Services.AddDbContext<UserDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("UserDatabase")), ServiceLifetime.Scoped);
 
+
+builder.Services.AddCors(options =>
+{
+    options.AddPolicy("AllowFrontend", builder =>
+    {
+        builder.WithOrigins("http://localhost:5000") // Frontend URL
+               .AllowAnyHeader()
+               .AllowAnyMethod()
+               .AllowCredentials(); // Allow credentials (cookies, tokens)
+    });
+});
+
+
+
+
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -61,7 +77,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwagger();
     app.UseSwaggerUI();
 }
-
+app.UseCors("AllowFrontend");
 app.UseHttpsRedirection();
 
 app.UseAuthorization();
