@@ -71,4 +71,5 @@ public class ProductController : ControllerBase
             return StatusCode(500, new { Message = "An error occurred while importing products." });
         }
     }
+
 }

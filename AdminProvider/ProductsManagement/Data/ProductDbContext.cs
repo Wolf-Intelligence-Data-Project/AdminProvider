@@ -19,10 +19,10 @@ public class ProductDbContext : DbContext
 
         modelBuilder.Entity<ProductEntity>(entity =>
         {
-            // Just for querying, no schema management
-            entity.HasKey(e => e.ProductId); // Define ProductId as primary key
+            // Set primary key
+            entity.HasKey(e => e.ProductId);
 
-            // Define properties' column mappings
+            // Define properties and required constraints
             entity.Property(e => e.CompanyName).IsRequired();
             entity.Property(e => e.OrganizationNumber).IsRequired();
             entity.Property(e => e.Address).IsRequired();
@@ -31,12 +31,16 @@ public class ProductDbContext : DbContext
             entity.Property(e => e.PhoneNumber).IsRequired();
             entity.Property(e => e.Email).IsRequired();
             entity.Property(e => e.BusinessType).IsRequired();
-            entity.Property(e => e.Revenue).IsRequired();
             entity.Property(e => e.NumberOfEmployees).IsRequired();
             entity.Property(e => e.CEO).IsRequired();
             entity.Property(e => e.CustomerId).IsRequired(false);
             entity.Property(e => e.SoldUntil).IsRequired(false);
             entity.Property(e => e.ReservedUntil).IsRequired(false);
+
+            // Explicit mapping for Revenue with precision and scale
+            entity.Property(e => e.Revenue)
+                .IsRequired()
+                .HasColumnType("decimal(18,2)"); // Ensure it uses decimal(18,2) in the database
         });
     }
 }

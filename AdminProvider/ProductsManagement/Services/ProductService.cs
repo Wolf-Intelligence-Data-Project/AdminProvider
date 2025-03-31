@@ -1,7 +1,6 @@
 ﻿using AdminProvider.ProductsManagement.Data.Entities;
 using AdminProvider.ProductsManagement.Interfaces;
 using AdminProvider.ProductsManagement.Models;
-using Microsoft.Identity.Client;
 using OfficeOpenXml;
 using LicenseContext = OfficeOpenXml.LicenseContext;
 
@@ -10,9 +9,11 @@ namespace AdminProvider.ProductsManagement.Services;
 public class ProductService : IProductService
 {
     private readonly IProductRepository _productRepository;
-    public ProductService(IProductRepository productRepository)
+    private readonly ILogger<IProductService> _logger;
+    public ProductService(IProductRepository productRepository, ILogger<IProductService> logger)
     {
         _productRepository = productRepository;
+        _logger = logger;
     }
 
     public async Task<ProductsCountResponse> GetProductsCountAsync()
@@ -32,10 +33,10 @@ public class ProductService : IProductService
         ExcelPackage.LicenseContext = LicenseContext.NonCommercial; // Fix for EPPlus License Issue
 
         using var stream = new MemoryStream();
-        await file.CopyToAsync(stream);
-        stream.Position = 0;
+        await file.CopyToAsync(stream); // Read file into memory
+        stream.Position = 0; // Reset the stream position to the beginning
 
-        using var package = new ExcelPackage(stream);
+        using var package = new ExcelPackage(stream); // Load the Excel package from the memory stream
         var worksheet = package.Workbook.Worksheets[0];
 
         if (worksheet == null)
@@ -49,6 +50,30 @@ public class ProductService : IProductService
             throw new InvalidOperationException("The uploaded file does not contain enough data.");
         }
 
+        // Map column headers with trimming and case-insensitivity
+        var headers = new Dictionary<string, int>();
+        for (int col = 1; col <= worksheet.Dimension?.Columns; col++)
+        {
+            var header = worksheet.Cells[1, col].Text?.Trim().ToLower(); // Normalize header text
+            if (!string.IsNullOrEmpty(header)) // Ensure the header is not null or empty
+            {
+                headers[header] = col;
+            }
+        }
+
+        var requiredColumns = new List<string>
+    {
+        "företagsnamn", "organisationsnummer", "adress", "postnummer", "ort", "telefonnummer", "e-post", "bransch (sni-kod)", "omsättning (msek)", "antal anställda", "vd-namn"
+    };
+
+        foreach (var column in requiredColumns)
+        {
+            if (!headers.ContainsKey(column))
+            {
+                throw new InvalidOperationException($"The required column '{column}' is missing in the uploaded file.");
+            }
+        }
+
         var productsToAdd = new List<ProductEntity>();
         var errors = new List<string>();
 
@@ -56,19 +81,18 @@ public class ProductService : IProductService
         {
             try
             {
-                var companyName = worksheet.Cells[row, 1].Text?.Trim();
-                var organizationNumber = worksheet.Cells[row, 2].Text?.Trim();
-                var address = worksheet.Cells[row, 3].Text?.Trim();
-                var postalCode = worksheet.Cells[row, 4].Text?.Trim();
-                var city = worksheet.Cells[row, 5].Text?.Trim();
-                var phoneNumber = worksheet.Cells[row, 6].Text?.Trim();
-                var email = worksheet.Cells[row, 7].Text?.Trim();
-                var businessType = worksheet.Cells[row, 8].Text?.Trim();
-                var revenue = int.TryParse(worksheet.Cells[row, 9].Text, out var rev) ? rev : 0;
-                var employees = int.TryParse(worksheet.Cells[row, 10].Text, out var emp) ? emp : 0;
-                var ceo = worksheet.Cells[row, 11].Text?.Trim();
+                var companyName = worksheet.Cells[row, headers["företagsnamn"]].Text?.Trim();
+                var organizationNumber = worksheet.Cells[row, headers["organisationsnummer"]].Text?.Trim();
+                var address = worksheet.Cells[row, headers["adress"]].Text?.Trim();
+                var postalCode = worksheet.Cells[row, headers["postnummer"]].Text?.Trim();
+                var city = worksheet.Cells[row, headers["ort"]].Text?.Trim();
+                var phoneNumber = worksheet.Cells[row, headers["telefonnummer"]].Text?.Trim();
+                var email = worksheet.Cells[row, headers["e-post"]].Text?.Trim();
+                var businessType = worksheet.Cells[row, headers["bransch (sni-kod)"]].Text?.Trim();
+                var revenue = int.TryParse(worksheet.Cells[row, headers["omsättning (msek)"]].Text, out var rev) ? rev : 0;
+                var employees = int.TryParse(worksheet.Cells[row, headers["antal anställda"]].Text, out var emp) ? emp : 0;
+                var ceo = worksheet.Cells[row, headers["vd-namn"]].Text?.Trim();
 
-                // No need to parse CustomerId they will stay null
                 var product = new ProductEntity
                 {
                     ProductId = Guid.NewGuid(),
@@ -80,12 +104,12 @@ public class ProductService : IProductService
                     PhoneNumber = phoneNumber,
                     Email = email,
                     BusinessType = businessType,
-                    Revenue = revenue,
+                    Revenue = ConvertToDecimal(revenue),
                     NumberOfEmployees = employees,
                     CEO = ceo,
-                    CustomerId = null,  // Explicitly set to null
-                    ReservedUntil = null, // Ensure null for ReservedUntil as well
-                    SoldUntil = null     // Ensure null for SoldUntil as well
+                    CustomerId = null,
+                    ReservedUntil = null,
+                    SoldUntil = null
                 };
 
                 productsToAdd.Add(product);
@@ -98,21 +122,42 @@ public class ProductService : IProductService
 
         if (productsToAdd.Count > 0)
         {
-            await _productRepository.AddProductsAsync(productsToAdd);
-        }
-        else
-        {
-            throw new InvalidOperationException("No valid products were found in the uploaded file.");
+            const int batchSize = 1000;
+            var batchStart = 0;
+            while (batchStart < productsToAdd.Count)
+            {
+                var batch = productsToAdd.Skip(batchStart).Take(batchSize).ToList();
+                await _productRepository.AddProductsAsync(batch);
+                batchStart += batchSize;
+            }
         }
 
         if (errors.Any())
         {
-            // Log the errors for debugging
-            Console.WriteLine("Errors occurred during import:");
+            _logger.LogError("Errors occurred during import:");
             foreach (var error in errors)
             {
-                Console.WriteLine(error);
+                _logger.LogError(error);
             }
+        }
+    }
+
+    private decimal ConvertToDecimal(object value)
+    {
+        try
+        {
+            return value switch
+            {
+                decimal decimalValue => decimalValue,
+                int intValue => (decimal)intValue,
+                double doubleValue => (decimal)doubleValue,
+                _ => 0m // Default to 0 if unsupported type
+            };
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error converting value to decimal.");
+            return 0m; // Default to 0 if any errors occur
         }
     }
 }
