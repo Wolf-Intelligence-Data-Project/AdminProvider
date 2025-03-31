@@ -14,8 +14,11 @@ using AdminProvider.UsersManagement.Data;
 using AdminProvider.UsersManagement.Interfaces;
 using AdminProvider.UsersManagement.Repositories;
 using AdminProvider.UsersManagement.Services;
-using Microsoft.AspNetCore.Identity;
+using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.IdentityModel.Tokens;
+using System.Security.Claims;
+using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
@@ -29,6 +32,66 @@ builder.Services.AddSwaggerGen();
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddMemoryCache();
 builder.Services.AddHttpClient();
+// Access Token Validation
+builder.Services.AddAuthentication("Bearer")
+    .AddJwtBearer(options =>
+    {
+        options.RequireHttpsMetadata = false;
+        options.TokenValidationParameters = new TokenValidationParameters
+        {
+            ValidateIssuer = true,
+            ValidateAudience = true,
+            ValidateIssuerSigningKey = true,
+            IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JwtAccess:Key"])),
+            ValidIssuer = builder.Configuration["JwtAccess:Issuer"],
+            ValidAudience = builder.Configuration["JwtAccess:Audience"],
+            ClockSkew = TimeSpan.Zero, // No clock skew for strict expiration checks
+        };
+
+        options.Events = new JwtBearerEvents
+        {
+            OnMessageReceived = context =>
+            {
+                var token = context.HttpContext.Request.Cookies["AccessToken"];
+                if (!string.IsNullOrEmpty(token))
+                {
+                    context.Token = token; 
+                }
+                else
+                {
+                    var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+                    logger.LogError("No token found in cookie.");
+                }
+                return Task.CompletedTask;
+            },
+
+        OnTokenValidated = context =>
+            {
+                var claimsIdentity = context.Principal.Identity as ClaimsIdentity;
+
+                if (claimsIdentity == null)
+                {
+                    context.Fail("Token är ogiltigt. Claims identity är null."); // Swedish message
+                    return Task.CompletedTask;
+                }
+
+                // Log success after validation (log only non-sensitive data)
+                var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+
+                return Task.CompletedTask;
+            },
+            OnAuthenticationFailed = context =>
+            {
+                var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+                logger.LogError($"Authentication failed: {context.Exception.Message}");
+                if (context.Exception.StackTrace != null)
+                {
+                    logger.LogError(context.Exception.StackTrace);
+                }
+                return Task.CompletedTask;
+            }
+        };
+    });
 
 builder.Services.AddScoped<IAccessTokenService, AccessTokenService>();
 builder.Services.AddScoped<ICustomPasswordHasher<AdminEntity>, CustomPasswordHasher>();
@@ -66,9 +129,6 @@ builder.Services.AddCors(options =>
     });
 });
 
-
-
-
 var app = builder.Build();
 
 // Configure the HTTP request pipeline.
@@ -80,6 +140,7 @@ if (app.Environment.IsDevelopment())
 app.UseCors("AllowFrontend");
 app.UseHttpsRedirection();
 
+app.UseAuthentication();
 app.UseAuthorization();
 
 app.MapControllers();

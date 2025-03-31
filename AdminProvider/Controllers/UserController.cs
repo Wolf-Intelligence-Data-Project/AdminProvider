@@ -1,9 +1,10 @@
 ﻿using AdminProvider.UsersManagement.Models.Requests;
 using AdminProvider.UsersManagement.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AdminProvider.Controllers;
-
+[Authorize]
 [Route("api/[controller]")]
 [ApiController]
 public class UserController : ControllerBase

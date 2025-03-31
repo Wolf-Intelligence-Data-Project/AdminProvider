@@ -4,6 +4,7 @@ using AdminProvider.ModeratorsManagement.Models.Responses;
 using AdminProvider.ModeratorsManagement.Interfaces.Services;
 using System.IdentityModel.Tokens.Jwt;
 using AdminProvider.ModeratorsManagement.Services;
+using Microsoft.AspNetCore.Authorization;
 
 namespace AdminProvider.Controllers;
 
@@ -91,6 +92,7 @@ public class AuthController : ControllerBase
     /// <returns>Returns authentication and verification status.</returns>
     /// <response code="200">Returns authentication status.</response>
     /// <response code="400">Access token is missing.</response>
+    [Authorize]
     [HttpGet("status")]
     public IActionResult GetAuthStatus()
     {

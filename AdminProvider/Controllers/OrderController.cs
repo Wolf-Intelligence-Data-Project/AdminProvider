@@ -1,8 +1,10 @@
 ﻿using AdminProvider.OrdersManagement.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AdminProvider.Controllers;
 
+[Authorize]
 [Route("api/[controller]")]
 [ApiController]
 public class OrderController : ControllerBase

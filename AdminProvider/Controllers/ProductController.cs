@@ -1,9 +1,11 @@
 ﻿using AdminProvider.ProductsManagement.Interfaces;
 using AdminProvider.ProductsManagement.Models;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AdminProvider.Controllers;
 
+[Authorize]
 [ApiController]
 [Route("api/product")]
 public class ProductController : ControllerBase
