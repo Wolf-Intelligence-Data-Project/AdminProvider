@@ -1,6 +1,9 @@
-﻿using AdminProvider.OrdersManagement.Services;
+﻿using AdminProvider.OrdersManagement.Interfaces;
+using AdminProvider.OrdersManagement.Models.Requests;
+using AdminProvider.UsersManagement.Models.DTOs;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Newtonsoft.Json;
 
 namespace AdminProvider.Controllers;
 
@@ -9,10 +12,10 @@ namespace AdminProvider.Controllers;
 [ApiController]
 public class OrderController : ControllerBase
 {
-    private readonly OrderService _orderService;
+    private readonly IOrderService _orderService;
     private readonly ILogger<OrderController> _logger;
 
-    public OrderController(OrderService orderService, ILogger<OrderController> logger)
+    public OrderController(IOrderService orderService, ILogger<OrderController> logger)
     {
         _orderService = orderService ?? throw new ArgumentNullException(nameof(orderService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -21,17 +24,42 @@ public class OrderController : ControllerBase
     /// <summary>
     /// Retrieves all orders.
     /// </summary>
-    [HttpGet("all")]
-    public async Task<IActionResult> GetAllOrders()
+    [HttpGet("get-all")]
+    public async Task<IActionResult> GetAllOrders([FromQuery] int pageNumber = 1, [FromQuery] int pageSize = 10)
     {
         try
         {
-            var orders = await _orderService.GetAllOrdersAsync();
-            if (orders == null || orders.Count == 0)
+            var (orderDtos, totalCount) = await _orderService.GetAllOrdersAsync(pageNumber, pageSize);
+            if (orderDtos == null)
+            {
+                _logger.LogInformation("No orders found in result.");
+            }
+            else
+            {
+                _logger.LogInformation("Fetched Orders: {@Orders}", orderDtos);  // Log without serialization
+            }
+
+            _logger.LogInformation("Total Orders Count: {TotalCount}", totalCount);
+
+            // Log the result to check what's being returned
+            _logger.LogInformation("Result from GetAllOrdersAsync: {@Result}", orderDtos);
+
+            if (orderDtos == null || totalCount == 0)
             {
                 return NotFound(new { Message = "No orders found." });
             }
-            return Ok(orders);
+
+            var result = new
+            {
+                Orders = orderDtos,
+                TotalCount = totalCount,
+            };
+
+            // Serialize the result into JSON string
+            _logger.LogInformation("Result: {Result}", JsonConvert.SerializeObject(result));
+
+            return Ok(result);
+
         }
         catch (Exception ex)
         {
@@ -44,17 +72,17 @@ public class OrderController : ControllerBase
     /// Retrieves an order by its ID.
     /// </summary>
     /// <param name="orderId">The order ID.</param>
-    [HttpGet("{orderId:guid}")]
-    public async Task<IActionResult> GetOrderById(Guid orderId)
+    [HttpGet("order")]
+    public async Task<IActionResult> GetOrderById([FromQuery] OrderRequest request)
     {
         try
         {
-            var order = await _orderService.GetOrderByIdAsync(orderId);
+            var order = await _orderService.GetOrderByIdAsync(request);
             return Ok(order);
         }
         catch (KeyNotFoundException ex)
         {
-            _logger.LogWarning(ex, "Order with ID {OrderId} not found.", orderId);
+            _logger.LogWarning(ex, "Order with ID {OrderId} not found.");
             return NotFound(new { ex.Message });
         }
         catch (Exception ex)
@@ -67,13 +95,13 @@ public class OrderController : ControllerBase
     /// <summary>
     /// Retrieves orders for a specific customer.
     /// </summary>
-    /// <param name="customerId">The customer ID.</param>
-    [HttpGet("customer/{customerId:guid}")]
-    public async Task<IActionResult> GetOrdersByCustomerId(Guid customerId)
+    /// <param name="request">The request model containing the customer ID.</param>
+    [HttpGet("orders")]
+    public async Task<IActionResult> GetOrdersByCustomerId([FromQuery] OrderRequest request)
     {
         try
         {
-            var orders = await _orderService.GetOrdersByCustomerIdAsync(customerId);
+            var orders = await _orderService.GetOrdersByCustomerIdAsync(request);
             if (orders == null || orders.Count == 0)
             {
                 return NotFound(new { Message = "No orders found for this customer." });
@@ -82,7 +110,7 @@ public class OrderController : ControllerBase
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, "Error retrieving orders for customer ID {CustomerId}.", customerId);
+            _logger.LogError(ex, "Error retrieving orders for customer ID {CustomerId}.");
             return StatusCode(500, new { Message = "An error occurred while retrieving customer orders." });
         }
     }

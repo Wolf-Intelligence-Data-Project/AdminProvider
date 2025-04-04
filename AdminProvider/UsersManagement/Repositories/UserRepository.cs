@@ -14,10 +14,17 @@ public class UserRepository : IUserRepository
         _userDbContext = context;
         _logger = logger;
     }
-
-    public async Task<List<UserEntity>> GetAllUsersAsync()
+    public async Task<(List<UserEntity>, int, int)> GetAllUsersAsync(int pageNumber, int pageSize)
     {
-        return await _userDbContext.Users.ToListAsync();
+        var totalCount = await _userDbContext.Users.CountAsync(); // Total users count
+        var companyCount = await _userDbContext.Users.CountAsync(u => u.IsCompany); // Count of companies
+
+        var users = await _userDbContext.Users
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return (users, totalCount, companyCount);
     }
 
     public async Task<UserEntity> GetByIdAsync(Guid userId)
@@ -29,45 +36,50 @@ public class UserRepository : IUserRepository
         }
 
         var user = await _userDbContext.Users
+            .Include(u => u.Addresses)
             .Where(u => u.UserId == userId)
             .FirstOrDefaultAsync(x => x.UserId == userId);
 
         return user;
     }
 
-    public async Task<UserEntity> GetByEmailAsync(string email)
+    public async Task<List<UserEntity>> GetUsersByQueryAsync(string searchTerm)
     {
-        if (email == null)
+        if (string.IsNullOrWhiteSpace(searchTerm))
         {
-            _logger.LogError("The user does not exist.");
-            throw new ArgumentNullException("Användaren finns inte.");
+            _logger.LogError("The search term is empty.");
+            throw new ArgumentNullException("The search term is empty.");
         }
 
-        var user = await _userDbContext.Users
-            .Where(u => u.Email == email)
-            .FirstOrDefaultAsync(x => x.Email == email);
+        // Return all matching users instead of just one
+        var users = await _userDbContext.Users
+            .Where(u => u.Email.Contains(searchTerm) ||
+                        u.FullName.Contains(searchTerm) ||
+                        u.CompanyName.Contains(searchTerm) ||
+                        u.IdentificationNumber.Contains(searchTerm))
+            .ToListAsync(); // Get all matching users
 
-        return user;
+        return users;
     }
 
-    public async Task<UserEntity> UpdateAdminNoteAsync(Guid userId, string adminNote)
+    public async Task<string> UpdateAdminNoteAsync(Guid userId, string adminNote)
     {
         try
         {
-            var existingUser = await _userDbContext.Set<UserEntity>().FindAsync(userId);
-            if (existingUser == null)
+            var user = await _userDbContext.Set<UserEntity>().FindAsync(userId);
+            if (user == null)
             {
                 throw new InvalidOperationException("Användaren finns inte.");
             }
 
-            existingUser.AdminNote = adminNote;
+            user.AdminNote = adminNote;
 
             // Mark the specific property as modified
-            _userDbContext.Entry(existingUser).Property(u => u.AdminNote).IsModified = true;
+            _userDbContext.Entry(user).Property(u => u.AdminNote).IsModified = true;
 
             await _userDbContext.SaveChangesAsync();
 
-            return existingUser; // Return the updated entity
+            return user.AdminNote; // Return the updated entity
         }
         catch (Exception ex)
         {
@@ -76,4 +88,24 @@ public class UserRepository : IUserRepository
         }
     }
 
+    public async Task DeleteOneAsync(Guid userId)
+    {
+        try
+        {
+            var user = await _userDbContext.Users.FindAsync(userId);
+            if (user == null)
+            {
+                _logger.LogWarning("User with ID {UserId} not found.", userId);
+                return;
+            }
+
+            _userDbContext.Users.Remove(user);
+            await _userDbContext.SaveChangesAsync();
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error occurred while deleting user with ID {UserId}", userId);
+            throw;
+        }
+    }
 }

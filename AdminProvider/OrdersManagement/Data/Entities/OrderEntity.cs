@@ -1,7 +1,10 @@
-﻿namespace AdminProvider.OrdersManagement.Data.Entities;
+﻿using System.ComponentModel.DataAnnotations;
+
+namespace AdminProvider.OrdersManagement.Data.Entities;
 
 public class OrderEntity
 {
+    [Key]
     public Guid OrderId { get; set; }
     public Guid CustomerId { get; set; }
     public string CustomerEmail { get; set; }

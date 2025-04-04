@@ -5,6 +5,9 @@ using System.Security.Claims;
 using System.Text;
 using AdminProvider.ModeratorsManagement.Models.Tokens;
 using AdminProvider.ModeratorsManagement.Interfaces.Services;
+using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.Identity;
+using AdminProvider.ModeratorsManagement.Models.Responses;
 
 namespace AdminProvider.ModeratorsManagement.Services;
 
@@ -46,10 +49,11 @@ public class AccessTokenService : IAccessTokenService
             throw new InvalidOperationException("JWT configuration is missing.");
 
         var claims = new[] {
-            new Claim(ClaimTypes.Name, admin.FirstName),
-            new Claim("adminId", admin.AdminId.ToString()),
-            new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
-        };
+    new Claim("passwordChosen", admin.PasswordChosen.ToString()),
+    new Claim(ClaimTypes.Role, admin.Role), // This is where the role is stored
+    new Claim("adminId", admin.AdminId.ToString()),
+    new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
+};
 
         var key = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(secretKey));
         var creds = new SigningCredentials(key, SecurityAlgorithms.HmacSha256);
@@ -73,35 +77,58 @@ public class AccessTokenService : IAccessTokenService
         _memoryCache.Set(IpCacheKey + admin.AdminId, userIpInfo.IpAddress, TimeSpan.FromHours(1));
         _cacheKeys.Add(IpCacheKey + admin.AdminId); // Track IP cache key
 
-        _logger.LogInformation($"Generated new access token for user {admin.FirstName}.");
-        return tokenString;
+        _logger.LogInformation($"Generated new access token for user {admin.FullName}.");
+
+        // Now return HttpOnly cookie instead of just the token string
+        _httpContextAccessor.HttpContext?.Response?.Cookies.Append("AccessToken", tokenString, new CookieOptions
+        {
+            HttpOnly = true,
+            Secure = true,
+            SameSite = SameSiteMode.None,
+            Expires = DateTime.Now.AddHours(1)
+        });
+
+        // Extract role from claims
+        string role = claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value;
+
+        if (string.IsNullOrEmpty(role))
+        {
+            _logger.LogWarning("There is no role for this admin.");
+        }
+        // Now return the response with role and success message
+        return role;
     }
 
-
-    //_httpContextAccessor.HttpContext?.Response?.Cookies.Append("AccessToken", tokenString, new CookieOptions
-    //{
-    //    HttpOnly = true,
-    //    Secure = true,
-    //    SameSite = SameSiteMode.None,
-    //    Expires = DateTime.Now.AddHours(1)
-    //});
-    public bool ValidateAccessToken(string token)
+    public AuthStatus ValidateAccessToken()
     {
         try
         {
+            // Check if HttpContext is available
             if (_httpContextAccessor.HttpContext == null)
             {
                 _logger.LogError("HttpContext is null.");
+                return new AuthStatus
+                {
+                    IsAuthenticated = false,
+                    ErrorMessage = "HttpContext is null"
+                };
             }
-            token ??= _httpContextAccessor.HttpContext?.Request?.Cookies["AccessToken"] ?? string.Empty;
 
+            // Get token from cookies if not provided
+            string token = _httpContextAccessor.HttpContext?.Request?.Cookies["AccessToken"] ?? string.Empty;
 
+            // Check if token is missing or blacklisted
             if (string.IsNullOrEmpty(token) || !CheckBlacklist(token))
             {
                 _logger.LogWarning("Token is either missing or blacklisted.");
-                return (false);
+                return new AuthStatus
+                {
+                    IsAuthenticated = false,
+                    ErrorMessage = "Token is either missing or blacklisted"
+                };
             }
 
+            // Initialize JWT token handler and validation parameters
             var handler = new JwtSecurityTokenHandler();
             var validationParameters = new TokenValidationParameters
             {
@@ -114,35 +141,52 @@ public class AccessTokenService : IAccessTokenService
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JwtAccess:Key"]))
             };
 
+            // Validate the token
             var principal = handler.ValidateToken(token, validationParameters, out _);
 
-            // Check if AdminId is available in the claims.
+            // Extract adminId from token claims
             var adminId = principal.Claims.FirstOrDefault(c => c.Type == "adminId")?.Value;
             if (string.IsNullOrEmpty(adminId))
             {
                 _logger.LogWarning("AdminId not found in token claims.");
-                return (false);
+                return new AuthStatus
+                {
+                    IsAuthenticated = false,
+                    ErrorMessage = "AdminId not found in token claims"
+                };
             }
 
-            // IP validation
+            // Perform IP validation
             var storedIp = _memoryCache.Get<string>(IpCacheKey + adminId);
             var currentIp = GetUserIp().IpAddress;
             bool isAuthenticated = storedIp == null || storedIp == currentIp;
 
+            // Log the result
             _logger.LogInformation($"Token validation successful for Admin ID: {adminId}. IP check: {isAuthenticated}");
 
-            return (isAuthenticated);
-
+            return new AuthStatus
+            {
+                IsAuthenticated = isAuthenticated,
+                Role = principal.Claims.FirstOrDefault(c => c.Type == ClaimTypes.Role)?.Value
+            };
         }
         catch (SecurityTokenException ex)
         {
             _logger.LogWarning("Token validation failed: {Message}", ex.Message);
-            return (false);
+            return new AuthStatus
+            {
+                IsAuthenticated = false,
+                ErrorMessage = $"Token validation failed: {ex.Message}"
+            };
         }
         catch (Exception ex)
         {
             _logger.LogError($"Unexpected error during token validation: {ex.Message}");
-            return (false);
+            return new AuthStatus
+            {
+                IsAuthenticated = false,
+                ErrorMessage = $"Unexpected error: {ex.Message}"
+            };
         }
     }
 

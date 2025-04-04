@@ -1,4 +1,7 @@
-﻿namespace AdminProvider.ModeratorsManagement.Interfaces.Services;
+﻿using AdminProvider.ModeratorsManagement.Models.Responses;
+using Microsoft.AspNetCore.Mvc;
+
+namespace AdminProvider.ModeratorsManagement.Interfaces.Services;
 
 public interface IAccessTokenService
 {
@@ -7,7 +10,7 @@ public interface IAccessTokenService
 
     string GetAdminIdFromToken(string token);
 
-    bool ValidateAccessToken(string token);
+    AuthStatus ValidateAccessToken();
 
     Task RevokeAndBlacklistAccessToken(string userId);
 

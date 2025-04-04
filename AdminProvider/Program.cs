@@ -4,7 +4,7 @@ using AdminProvider.ModeratorsManagement.Services;
 using AdminProvider.ModeratorsManagement.Utillities;
 using AdminProvider.OrdersManagement.Data;
 using AdminProvider.OrdersManagement.Interfaces;
-using AdminProvider.OrdersManagement.Models;
+using AdminProvider.OrdersManagement.Repositories;
 using AdminProvider.OrdersManagement.Services;
 using AdminProvider.ProductsManagement.Data;
 using AdminProvider.ProductsManagement.Interfaces;
@@ -65,18 +65,28 @@ builder.Services.AddAuthentication("Bearer")
                 return Task.CompletedTask;
             },
 
-        OnTokenValidated = context =>
+            OnTokenValidated = context =>
             {
                 var claimsIdentity = context.Principal.Identity as ClaimsIdentity;
 
                 if (claimsIdentity == null)
                 {
-                    context.Fail("Token är ogiltigt. Claims identity är null."); // Swedish message
+                    context.Fail("Token är ogiltigt. Claims identity är null.");
                     return Task.CompletedTask;
                 }
 
-                // Log success after validation (log only non-sensitive data)
+                // Extract role claim
+                var roleClaim = claimsIdentity.FindFirst(ClaimTypes.Role)?.Value;
+
+                if (string.IsNullOrEmpty(roleClaim))
+                {
+                    context.Fail("Token saknar roll.");
+                    return Task.CompletedTask;
+                }
+
+                // Log the extracted role (for debugging)
                 var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
+                logger.LogInformation($"Användarens roll: {roleClaim}");
 
                 return Task.CompletedTask;
             },
@@ -116,6 +126,12 @@ builder.Services.AddDbContext<OrderDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("OrderDatabase")), ServiceLifetime.Scoped);
 builder.Services.AddDbContext<UserDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("UserDatabase")), ServiceLifetime.Scoped);
+
+builder.Services.AddAuthorization(options =>
+{
+    options.AddPolicy("Admin", policy => policy.RequireRole("Admin"));
+    options.AddPolicy("Moderator", policy => policy.RequireRole("Moderator"));
+});
 
 
 builder.Services.AddCors(options =>

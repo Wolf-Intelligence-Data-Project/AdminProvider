@@ -83,22 +83,17 @@ public class SignInService : ISignInService
                 };
             }
 
-            string token = await _accessTokenService.GenerateAccessToken(adminEntity);
-            if (token == null)
-            {
-                return new SignInResponse
-                {
-                    Success = false,
-                    Message = "Inloggning lyckades.",
-                };
-            }
+            // Generate and set the JWT token as an HttpOnly cookie
+            string role = await _accessTokenService.GenerateAccessToken(adminEntity);
 
             _logger.LogInformation("User signed in successfully.");
+
+            // No need to return token, just success message
             return new SignInResponse
             {
                 Success = true,
                 Message = "Inloggning lyckades.",
-                Jwt = token
+                Role = role
             };
         }
         catch (Exception ex)
@@ -112,8 +107,15 @@ public class SignInService : ISignInService
         }
     }
 
+
     private bool ValidatePassword(AdminEntity admin, string providedPassword)
     {
+        // If PasswordLastChangedAt is null, the user must change their password
+        if (admin.PasswordChosen != true)
+        {
+            throw new InvalidOperationException("Första inloggningen. Vänligen välj ditt lösenord.");
+        }
+        
         // Use the custom password hasher to validate the provided password against the stored hash
         bool isValid = _customPasswordHasher.VerifyHashedPassword(admin, admin.PasswordHash, providedPassword);
         return isValid;

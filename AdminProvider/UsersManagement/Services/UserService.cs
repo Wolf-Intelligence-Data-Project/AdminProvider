@@ -1,5 +1,7 @@
 ﻿using AdminProvider.UsersManagement.Data.Entities;
+using AdminProvider.UsersManagement.Factories;
 using AdminProvider.UsersManagement.Interfaces;
+using AdminProvider.UsersManagement.Models.DTOs;
 using AdminProvider.UsersManagement.Models.Requests;
 
 namespace AdminProvider.UsersManagement.Services;
@@ -14,21 +16,49 @@ public class UserService : IUserService
         _logger = logger;
     }
 
-    public async Task<List<UserEntity>> GetAllUsers()
+    public async Task<(List<UserDto> Users, int TotalCount, int CompanyCount)> GetAllUsers(int pageNumber, int pageSize)
     {
+        var (users, totalCount, companyCount) = await _userRepository.GetAllUsersAsync(pageNumber, pageSize);
 
-        return await _userRepository.GetAllUsersAsync();
+        // Convert UserEntities to UsersDto within the service layer
+        var usersDto = UsersDtoFactory.CreateList(users);
+
+        return (usersDto, totalCount, companyCount);
     }
 
-    public async Task<UserEntity> GetUserByEmailAsync(string email)
+    public async Task<List<UserDto>> GetUsersByQueryAsync(string searchQuery)
     {
-        var user = await _userRepository.GetByEmailAsync(email);
-        return user;
+        // Get the list of UserEntity objects based on the search query
+        var users = await _userRepository.GetUsersByQueryAsync(searchQuery);
+
+        // Convert UserEntity objects to UsersDto
+        var usersDto = users.Select(UsersDtoFactory.Create).ToList();
+
+        return usersDto;
     }
 
-    public async Task<bool> UpdateAdminNote(UserNoteUpdateRequest userNoteUpdateRequest)
+    public async Task<UserDetailsDto> GetUserAsync(string userId)
     {
-        var user = await _userRepository.GetByIdAsync(userNoteUpdateRequest.UserId);
+        if (Guid.TryParse(userId, out var userGuid))
+        {
+            var user = await _userRepository.GetByIdAsync(userGuid);
+
+            if (user == null)
+            {
+                throw new KeyNotFoundException("User not found");
+            }
+
+            // Convert the user entity to a UserDetailsDto
+            var userDetailsDto = UserDetailsDtoFactory.Create(user);
+
+            return userDetailsDto;
+        }
+
+        throw new ArgumentException("Invalid user ID format", nameof(userId));
+    }
+
+    public async Task<string> UpdateAdminNote(UserNoteUpdateRequest userNoteUpdateRequest)
+    {
         if (userNoteUpdateRequest == null || userNoteUpdateRequest.UserId == null || userNoteUpdateRequest.AdminNote == null)
         {
             _logger.LogError("There is nothing to update.");
@@ -36,8 +66,23 @@ public class UserService : IUserService
         var userId = userNoteUpdateRequest.UserId;
         string adminNote = userNoteUpdateRequest.AdminNote;
 
-        await _userRepository.UpdateAdminNoteAsync(userId, adminNote);
+        var updatedNote = await _userRepository.UpdateAdminNoteAsync(userId, adminNote);
 
-        return true;
+        return updatedNote;
+    }
+
+    public async Task DeleteUserAsync(UserRequest userRequest)
+    {
+        if (userRequest == null)
+        {
+            throw new ArgumentNullException(nameof(userRequest), "User request cannot be null.");
+        }
+
+        if (!Guid.TryParse(userRequest.SearchQuery, out Guid userId))
+        {
+            throw new ArgumentException("Invalid User ID format.", nameof(userRequest.SearchQuery));
+        }
+
+        await _userRepository.DeleteOneAsync(userId);
     }
 }

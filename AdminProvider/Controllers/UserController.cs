@@ -1,7 +1,11 @@
-﻿using AdminProvider.UsersManagement.Models.Requests;
+﻿using AdminProvider.UsersManagement.Factories;
+using AdminProvider.UsersManagement.Interfaces;
+using AdminProvider.UsersManagement.Models.Requests;
 using AdminProvider.UsersManagement.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using System.Reflection.Metadata.Ecma335;
+using System.Text.Json;
 
 namespace AdminProvider.Controllers;
 [Authorize]
@@ -9,10 +13,10 @@ namespace AdminProvider.Controllers;
 [ApiController]
 public class UserController : ControllerBase
 {
-    private readonly UserService _userService;
+    private readonly IUserService _userService;
     private readonly ILogger<UserController> _logger;
 
-    public UserController(UserService userService, ILogger<UserController> logger)
+    public UserController(IUserService userService, ILogger<UserController> logger)
     {
         _userService = userService ?? throw new ArgumentNullException(nameof(userService));
         _logger = logger ?? throw new ArgumentNullException(nameof(logger));
@@ -22,51 +26,83 @@ public class UserController : ControllerBase
     /// Retrieves all users from the system.
     /// </summary>
     /// <returns>A list of users.</returns>
-    [HttpGet("all")]
-    public async Task<IActionResult> GetAllUsers()
+    [HttpGet("get-all")]
+    public async Task<IActionResult> GetAllUsers(int pageNumber = 1, int pageSize = 10)
     {
-        try
+        var (userDtos, totalCount, companyCount) = await _userService.GetAllUsers(pageNumber, pageSize);
+
+        // Log the fetched data
+        _logger.LogInformation("Fetched {UserCount} users, TotalCount: {TotalCount}, CompanyCount: {CompanyCount}",
+                                userDtos.Count, totalCount, companyCount);
+
+        var result = new
         {
-            var users = await _userService.GetAllUsers();
-            if (users == null || users.Count == 0)
-            {
-                return NotFound(new { Message = "No users found." });
-            }
-            return Ok(users);
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "An error occurred while retrieving all users.");
-            return StatusCode(500, new { Message = "An error occurred while retrieving users." });
-        }
+            Users = userDtos,
+            TotalCount = totalCount,
+            CompanyCount = companyCount
+        };
+
+        return Ok(result);
     }
 
     /// <summary>
     /// Retrieves a user by their email.
     /// </summary>
     /// <param name="userEmailRequest">The request containing the email of the user.</param>
-    /// <returns>The user details.</returns>
-    [HttpPost("email")]
-    public async Task<IActionResult> GetUserByEmail([FromBody] string email)
+    /// <returns>The user details in UserDto format.</returns>
+    [HttpPost("get-users")]
+    public async Task<IActionResult> GetUserByQuery([FromBody] UserRequest request)
     {
-        if (string.IsNullOrWhiteSpace(email))
+        _logger.LogInformation($"Received request: {JsonSerializer.Serialize(request)}");
+
+        if (string.IsNullOrWhiteSpace(request.SearchQuery))
         {
-            return BadRequest(new { Message = "Email cannot be empty." });
+            return BadRequest(new { Message = "Search query cannot be empty." });
         }
 
         try
         {
-            var user = await _userService.GetUserByEmailAsync(email);
-            if (user == null)
+            var userDtos = await _userService.GetUsersByQueryAsync(request.SearchQuery);
+
+            if (userDtos == null || !userDtos.Any())
             {
-                return NotFound(new { Message = "User not found." });
+                return NotFound(new { Message = "No users found." });
             }
-            return Ok(user);
+
+            return Ok(userDtos);
         }
         catch (Exception ex)
         {
-            _logger.LogError(ex, $"An error occurred while retrieving the user with email {email}.");
-            return StatusCode(500, new { Message = "An error occurred while retrieving the user." });
+            _logger.LogError(ex, $"An error occurred while retrieving users for search query {request.SearchQuery}.");
+            return StatusCode(500, new { Message = "An error occurred while retrieving users." });
+        }
+    }
+
+    [HttpPost("get-user-details")]
+    public async Task<IActionResult> GetUserDetails([FromBody] UserRequest request)
+    {
+        _logger.LogInformation($"Received request: {JsonSerializer.Serialize(request)}");
+
+        if (string.IsNullOrWhiteSpace(request.SearchQuery))
+        {
+            return BadRequest(new { Message = "Search query cannot be empty." });
+        }
+
+        try
+        {
+            var userDetailsDto = await _userService.GetUserAsync(request.SearchQuery); // Get a list
+
+            if (userDetailsDto == null)
+            {
+                return NotFound(new { Message = "No users found." });
+            }
+
+            return Ok(userDetailsDto);
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, $"An error occurred while retrieving user.");
+            return StatusCode(500, new { Message = "An error occurred while retrieving users." });
         }
     }
 
@@ -90,10 +126,11 @@ public class UserController : ControllerBase
 
         try
         {
-            bool updateSuccess = await _userService.UpdateAdminNote(userNoteUpdateRequest);
-            if (updateSuccess)
+            string updatedNote = await _userService.UpdateAdminNote(userNoteUpdateRequest);
+
+            if (!string.IsNullOrEmpty(updatedNote))  // ✅ Corrected check
             {
-                return Ok(new { Message = "Admin note updated successfully." });
+                return Ok(new { updatedNote, Message = "Admin note updated successfully." });
             }
             else
             {
@@ -107,4 +144,22 @@ public class UserController : ControllerBase
         }
     }
 
+    [HttpDelete("delete-user")]
+    public async Task<IActionResult> DeleteUser([FromBody] UserRequest userId)
+    {
+        if (userId == null)
+        {
+            return BadRequest(new { Message = "Användar-ID har inte angetts." });
+        }
+        try
+        {
+            await _userService.DeleteUserAsync(userId);
+            return Ok(new { Message = "Användaren har tagits bort." });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error occured while deleting the user.");
+            return StatusCode(500, new { Message = "Ett fel uppstod vid borttagning av användaren." });
+        }
+    }
 }

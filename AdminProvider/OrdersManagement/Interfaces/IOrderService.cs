@@ -1,12 +1,14 @@
 ﻿using AdminProvider.OrdersManagement.Data.Entities;
+using AdminProvider.OrdersManagement.Models.DTOs;
+using AdminProvider.OrdersManagement.Models.Requests;
 
 namespace AdminProvider.OrdersManagement.Interfaces
 {
     public interface IOrderService
     {
-        Task<List<OrderEntity>> GetAllOrdersAsync();
-        Task<OrderEntity?> GetOrderByIdAsync(Guid orderId);
-        Task<List<OrderEntity>> GetOrdersByCustomerIdAsync(Guid customerId);
+        Task<(List<OrderDto> Orders, int TotalCount)> GetAllOrdersAsync(int pageNumber, int pageSize);
+        Task<OrderEntity?> GetOrderByIdAsync(OrderRequest request);
+        Task<List<OrderEntity>> GetOrdersByCustomerIdAsync(OrderRequest request);
 
         Task<List<OrderEntity>> GetOrdersByDateRangeAsync(DateTime fromDate, DateTime toDate);
     }

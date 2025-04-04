@@ -1,13 +1,13 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-public class AdminEntity
+namespace AdminProvider.ModeratorsManagement.Models.DTOs;
+
+public class AdminDto
 {
-    [Key]
+    [Required]
     public Guid AdminId { get; set; }
     [Required]
     public string Email { get; set; }
-    [Required]
-    public string PasswordHash { get; set; }
     [Required]
     public string Role { get; set; }  // "Admin" or "Moderator"
     [Required]
@@ -17,5 +17,4 @@ public class AdminEntity
 
     [Required]
     public string FullName { get; set; }
-    public bool PasswordChosen { get; set; } = false;
 }

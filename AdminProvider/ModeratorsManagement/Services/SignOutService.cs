@@ -1,4 +1,5 @@
 ﻿using AdminProvider.ModeratorsManagement.Interfaces.Services;
+using AdminProvider.ModeratorsManagement.Models.Requests;
 
 namespace AdminProvider.ModeratorsManagement.Services;
 
@@ -32,10 +33,10 @@ public class SignOutService : ISignOutService
         try
         {
             // Check if the token is valid and retrieve the authentication and verification statuses
-            var isAuthenticated = _accessTokenService.ValidateAccessToken(token); // Retrieve authentication and verification status
+            var isAuthenticated = _accessTokenService.ValidateAccessToken(); // Retrieve authentication and verification status
 
             // Log if token is invalid or expired, but allow sign-out regardless
-            if (!isAuthenticated)
+            if (!isAuthenticated.IsAuthenticated)
             {
                 _logger.LogInformation("Token is invalid or expired, proceeding with sign-out.");
             }

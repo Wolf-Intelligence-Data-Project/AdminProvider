@@ -1,5 +1,8 @@
 ﻿using AdminProvider.OrdersManagement.Data.Entities;
+using AdminProvider.OrdersManagement.Factories;
 using AdminProvider.OrdersManagement.Interfaces;
+using AdminProvider.OrdersManagement.Models.DTOs;
+using AdminProvider.OrdersManagement.Models.Requests;
 
 namespace AdminProvider.OrdersManagement.Services;
 
@@ -15,49 +18,50 @@ public class OrderService : IOrderService
         _logger = logger;
     }
 
-    public async Task<List<OrderEntity>> GetAllOrdersAsync()
+    public async Task<(List<OrderDto> Orders, int TotalCount)> GetAllOrdersAsync(int pageNumber, int pageSize)
     {
-        try
-        {
-            return await _orderRepository.GetAllAsync();
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error fetching all orders.");
-            throw new Exception("An error occurred while retrieving orders.");
-        }
+        var (orders, totalCount) = await _orderRepository.GetAllAsync(pageNumber, pageSize);
+
+        // Convert OrderEntities to OrderDtos
+        var orderDtos = OrderDtoFactory.CreateList(orders);
+
+        return (orderDtos, totalCount);
     }
 
-    public async Task<OrderEntity?> GetOrderByIdAsync(Guid orderId)
+
+
+    public async Task<OrderEntity?> GetOrderByIdAsync(OrderRequest request)
     {
-        try
+        if (request.Id == null)
         {
-            var order = await _orderRepository.GetByOrderIdAsync(orderId);
-            if (order == null)
-            {
-                _logger.LogWarning("Order with ID {OrderId} not found.", orderId);
-                throw new KeyNotFoundException($"Order with ID {orderId} not found.");
-            }
-            return order;
+            throw new ArgumentNullException(nameof(request.Id), "Order request cannot be null.");
         }
-        catch (Exception ex)
+
+        if (!Guid.TryParse(request.Id, out Guid userId))
         {
-            _logger.LogError(ex, "Error fetching order by ID.");
-            throw new Exception("An error occurred while retrieving the order.");
+            throw new ArgumentException("Invalid Order ID format.", nameof(request.Id));
         }
+
+        var order = await _orderRepository.GetByOrderIdAsync(userId);
+
+        return order;
     }
 
-    public async Task<List<OrderEntity>> GetOrdersByCustomerIdAsync(Guid customerId)
+    public async Task<List<OrderEntity>> GetOrdersByCustomerIdAsync(OrderRequest request)
     {
-        try
+        if (string.IsNullOrEmpty(request.Id)) 
         {
-            return await _orderRepository.GetByCustomerIdAsync(customerId);
+            throw new ArgumentNullException(nameof(request.Id), "Customer ID cannot be null or empty.");
         }
-        catch (Exception ex)
+
+        if (!Guid.TryParse(request.Id, out Guid customerId)) 
         {
-            _logger.LogError(ex, "Error fetching orders for customer ID {CustomerId}.", customerId);
-            throw new Exception("An error occurred while retrieving customer orders.");
+            throw new ArgumentException("Invalid Customer ID format.", nameof(request.Id));
         }
+
+        var orders = await _orderRepository.GetByCustomerIdAsync(customerId); 
+
+        return orders;
     }
 
     public async Task<List<OrderEntity>> GetOrdersByDateRangeAsync(DateTime fromDate, DateTime toDate)

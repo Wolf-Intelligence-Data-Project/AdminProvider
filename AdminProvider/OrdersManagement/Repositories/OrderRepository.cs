@@ -3,7 +3,7 @@ using AdminProvider.OrdersManagement.Data.Entities;
 using AdminProvider.OrdersManagement.Interfaces;
 using Microsoft.EntityFrameworkCore;
 
-namespace AdminProvider.OrdersManagement.Models;
+namespace AdminProvider.OrdersManagement.Repositories;
 
 public class OrderRepository : IOrderRepository
 {
@@ -15,12 +15,18 @@ public class OrderRepository : IOrderRepository
         _logger = logger;
     }
 
-    public async Task<List<OrderEntity>> GetAllAsync()
+    public async Task<(List<OrderEntity>, int)> GetAllAsync(int pageNumber, int pageSize)
     {
-        return await _orderDbContext.Orders
-            .Where(o => o.PaymentStatus != "Pending") // Exclude orders with "Pending" status
+        var totalCount = await _orderDbContext.Orders.CountAsync();  // Total orders count
+
+        var orders = await _orderDbContext.Orders
+            .Skip((pageNumber - 1) * pageSize)
+            .Take(pageSize)
             .ToListAsync();
+
+        return (orders, totalCount);
     }
+
 
     public async Task<OrderEntity?> GetByOrderIdAsync(Guid orderId)
     {

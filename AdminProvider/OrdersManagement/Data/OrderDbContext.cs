@@ -8,6 +8,6 @@ namespace AdminProvider.OrdersManagement.Data
     {
         public DbSet<OrderEntity> Orders { get; set; }
 
-        public OrderDbContext(DbContextOptions<UserDbContext> options) : base(options) { }
+        public OrderDbContext(DbContextOptions<OrderDbContext> options) : base(options) { }
     }
 }
