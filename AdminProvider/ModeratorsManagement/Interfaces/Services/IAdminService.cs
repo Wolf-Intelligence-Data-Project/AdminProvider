@@ -10,7 +10,6 @@ public interface IAdminService
     Task DeleteModerator(DeleteRequest request);
 
     Task PasswordChangeFirstTime(FirstPasswordChangeRequest request);
-    //void ResetPassword(string email, string newPassword);
 
     bool VerifyPassword(AdminEntity admin, string password);
 

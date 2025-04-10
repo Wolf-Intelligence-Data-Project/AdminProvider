@@ -176,8 +176,6 @@ public class AdminService : IAdminService
         }
     }
 
-    public async Task PasswordChange()
-
     public async Task PasswordChangeFirstTime(FirstPasswordChangeRequest request)
 {
     if (request == null)
@@ -248,7 +246,7 @@ public class AdminService : IAdminService
 public bool VerifyPassword(AdminEntity admin, string password)
     {
         // If PasswordLastChangedAt is null, the user must change their password
-        if (admin.PasswordChosen == null)
+        if (admin.PasswordChosen == null || admin.PasswordChosen == false)
         {
             throw new InvalidOperationException("First login detected. Please change your password.");
         }
