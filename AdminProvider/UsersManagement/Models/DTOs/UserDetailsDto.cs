@@ -14,4 +14,6 @@ public class UserDetailsDto
     public DateTime RegisteredAt { get; set; }
     public string AdminNote { get; set; }
     public List<AddressDto> Addresses { get; set; }
+
+    public int OrderCount { get; set; }
 }

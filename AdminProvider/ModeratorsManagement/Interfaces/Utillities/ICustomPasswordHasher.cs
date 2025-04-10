@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Identity;
+﻿using AdminProvider.ModeratorsManagement.Data.Entities;
+using Microsoft.AspNetCore.Identity;
 
 namespace AdminProvider.ModeratorsManagement.Interfaces.Utillities;
 

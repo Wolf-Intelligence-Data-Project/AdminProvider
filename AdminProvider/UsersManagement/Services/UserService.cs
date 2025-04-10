@@ -1,4 +1,7 @@
-﻿using AdminProvider.UsersManagement.Data.Entities;
+﻿using AdminProvider.OrdersManagement.Interfaces;
+using AdminProvider.OrdersManagement.Models.DTOs;
+using AdminProvider.OrdersManagement.Models.Responses;
+using AdminProvider.UsersManagement.Data.Entities;
 using AdminProvider.UsersManagement.Factories;
 using AdminProvider.UsersManagement.Interfaces;
 using AdminProvider.UsersManagement.Models.DTOs;
@@ -9,10 +12,12 @@ namespace AdminProvider.UsersManagement.Services;
 public class UserService : IUserService
 {
     private readonly IUserRepository _userRepository;
+    private readonly IOrderRepository _orderRepository;
     private readonly ILogger<UserService> _logger;
-    public UserService(IUserRepository userRepository, ILogger<UserService> logger)
+    public UserService(IUserRepository userRepository, IOrderRepository orderRepository, ILogger<UserService> logger)
     {
         _userRepository = userRepository;
+        _orderRepository = orderRepository;
         _logger = logger;
     }
 
@@ -20,11 +25,30 @@ public class UserService : IUserService
     {
         var (users, totalCount, companyCount) = await _userRepository.GetAllUsersAsync(pageNumber, pageSize);
 
-        // Convert UserEntities to UsersDto within the service layer
         var usersDto = UsersDtoFactory.CreateList(users);
+
+        // Get all customer IDs from users to optimize fetching order counts
+        var customerIds = usersDto.Select(u => u.UserId).ToList();
+
+        // Fetch all order counts for these customer IDs in bulk
+        var orderCounts = await _orderRepository.GetOrderCountsForCustomerIdsAsync(customerIds);
+
+        // Assign the order count to each user DTO
+        foreach (var userDto in usersDto)
+        {
+            if (orderCounts.ContainsKey(userDto.UserId))
+            {
+                userDto.OrderCount = orderCounts[userDto.UserId];
+            }
+            else
+            {
+                userDto.OrderCount = 0; // No orders found for this customer
+            }
+        }
 
         return (usersDto, totalCount, companyCount);
     }
+
 
     public async Task<List<UserDto>> GetUsersByQueryAsync(string searchQuery)
     {
@@ -39,8 +63,10 @@ public class UserService : IUserService
 
     public async Task<UserDetailsDto> GetUserAsync(string userId)
     {
+        // Try to parse the userId to a Guid
         if (Guid.TryParse(userId, out var userGuid))
         {
+            // Fetch the user details from the repository
             var user = await _userRepository.GetByIdAsync(userGuid);
 
             if (user == null)
@@ -48,14 +74,50 @@ public class UserService : IUserService
                 throw new KeyNotFoundException("User not found");
             }
 
+            // Fetch the order count for the user
+            var orderCount = await GetOrderCountByCustomerIdAsync(userGuid.ToString());
+
             // Convert the user entity to a UserDetailsDto
             var userDetailsDto = UserDetailsDtoFactory.Create(user);
+
+            // Add the order count to the user details DTO
+            userDetailsDto.OrderCount = orderCount;
 
             return userDetailsDto;
         }
 
         throw new ArgumentException("Invalid user ID format", nameof(userId));
     }
+
+    public async Task<List<OrderDto>> GetOrdersByCustomerIdAsync(string customerId)
+    {
+        if (!Guid.TryParse(customerId, out Guid customerGuid))
+        {
+            throw new ArgumentException("Invalid customer ID format", nameof(customerId));
+        }
+
+        var orderEntities = await _orderRepository.GetByCustomerIdAsync(customerGuid);
+
+        return orderEntities.Select(o => new OrderDto
+        {
+            OrderId = o.OrderId,
+            CustomerId = o.CustomerId,
+            CreatedAt = o.CreatedAt,
+            Quantity = o.Quantity,
+            // map more fields if needed
+        }).ToList();
+    }
+
+    public async Task<int> GetOrderCountByCustomerIdAsync(string customerId)
+{
+    if (!Guid.TryParse(customerId, out Guid customerGuid))
+    {
+        throw new ArgumentException("Invalid customer ID format", nameof(customerId));
+    }
+
+    return await _orderRepository.GetCountByCustomerIdAsync(customerGuid);
+}
+
 
     public async Task<string> UpdateAdminNote(UserNoteUpdateRequest userNoteUpdateRequest)
     {

@@ -1,4 +1,5 @@
-﻿using AdminProvider.ModeratorsManagement.Models.Responses;
+﻿using AdminProvider.ModeratorsManagement.Data.Entities;
+using AdminProvider.ModeratorsManagement.Models.Responses;
 using Microsoft.AspNetCore.Mvc;
 
 namespace AdminProvider.ModeratorsManagement.Interfaces.Services;

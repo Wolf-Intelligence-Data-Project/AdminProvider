@@ -3,6 +3,7 @@ using AdminProvider.ModeratorsManagement.Models.Responses;
 using AuthenticationProvider.Models.Requests;
 using AdminProvider.ModeratorsManagement.Interfaces.Services;
 using AdminProvider.ModeratorsManagement.Interfaces.Utillities;
+using AdminProvider.ModeratorsManagement.Data.Entities;
 
 namespace AdminProvider.ModeratorsManagement.Services;
 

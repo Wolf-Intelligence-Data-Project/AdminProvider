@@ -10,4 +10,5 @@ public class UserDto
     public string BusinessType { get; set; }
     public bool IsCompany { get; set; }
     public bool AdminNote { get; set; }
+    public int OrderCount { get; set; }
 }

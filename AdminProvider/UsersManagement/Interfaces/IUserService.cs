@@ -1,4 +1,5 @@
-﻿using AdminProvider.UsersManagement.Models.DTOs;
+﻿using AdminProvider.OrdersManagement.Models.DTOs;
+using AdminProvider.UsersManagement.Models.DTOs;
 using AdminProvider.UsersManagement.Models.Requests;
 using System.Reflection.Metadata;
 
@@ -9,6 +10,8 @@ public interface IUserService
     Task<(List<UserDto> Users, int TotalCount, int CompanyCount)> GetAllUsers(int pageNumber, int pageSize);
     Task<List<UserDto>> GetUsersByQueryAsync(string searchQuery);
     Task<UserDetailsDto> GetUserAsync(string userId);
+    Task<List<OrderDto>> GetOrdersByCustomerIdAsync(string customerId);
+    Task<int> GetOrderCountByCustomerIdAsync(string customerId);
     Task<string> UpdateAdminNote(UserNoteUpdateRequest userNoteUpdateRequest);
     Task DeleteUserAsync(UserRequest userRequest);
 }

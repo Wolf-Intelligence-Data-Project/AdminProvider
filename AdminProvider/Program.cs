@@ -1,3 +1,4 @@
+using AdminProvider.ModeratorsManagement.Data.Entities;
 using AdminProvider.ModeratorsManagement.Interfaces.Services;
 using AdminProvider.ModeratorsManagement.Interfaces.Utillities;
 using AdminProvider.ModeratorsManagement.Services;
@@ -110,6 +111,7 @@ builder.Services.AddScoped<ISignOutService, SignOutService>();
 builder.Services.AddScoped<ISignInService, SignInService>();
 
 builder.Services.AddScoped<IAdminService, AdminService>();
+builder.Services.AddScoped<IProfileService, ProfileService>();
 builder.Services.AddScoped<IEmailService, EmailService>();
 
 builder.Services.AddScoped<IUserService, UserService>();

@@ -1,11 +1,16 @@
 ﻿using System.ComponentModel.DataAnnotations;
 
-namespace AdminProvider.ModeratorsManagement.Models.Requests;
-
-public class PasswordChangeRequest
+namespace AdminProvider.ModeratorsManagement.Models.Requests
 {
-    [Required]
-    public string AdminId { get; set; }
-    [Required]
-    public string Password { get; set; }
+    public class PasswordChangeRequest
+    {
+        [Required]
+        public string CurrentPassword { get; set; }
+
+        [Required]
+        public string NewPassword { get; set; }
+
+        [Required]
+        public string ConfirmPassword { get; set; }
+    }
 }

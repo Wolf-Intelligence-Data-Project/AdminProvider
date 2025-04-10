@@ -10,6 +10,8 @@ public interface IOrderRepository
     Task<OrderEntity?> GetByOrderIdAsync(Guid orderId);
 
     Task<List<OrderEntity>> GetByCustomerIdAsync(Guid customerId);
-
+    Task<int> GetCountByCustomerIdAsync(Guid customerId);
+    Task<Dictionary<Guid, int>> GetOrderCountsForCustomerIdsAsync(List<Guid> customerIds);
+    Task<(List<OrderEntity> Orders, int TotalCount)> SearchAsync(string query, int pageNumber, int pageSize);
     Task<List<OrderEntity>> GetByDateRangeAsync(DateTime fromDate, DateTime toDate);
 }

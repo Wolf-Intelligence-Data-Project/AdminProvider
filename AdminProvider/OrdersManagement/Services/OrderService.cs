@@ -28,6 +28,28 @@ public class OrderService : IOrderService
         return (orderDtos, totalCount);
     }
 
+    public async Task<(List<OrderDto> Orders, int TotalCount)> SearchOrdersAsync(
+     string query, int pageNumber, int pageSize)
+    {
+        // Log input parameters for debugging
+        _logger.LogInformation("SearchOrdersAsync called with parameters: Query = {Query}, PageNumber = {PageNumber}, PageSize = {PageSize}",
+                               query, pageNumber, pageSize);
+
+        // Call the repository to search for orders
+        var (orders, totalCount) = await _orderRepository.SearchAsync(query, pageNumber, pageSize);
+
+        // Log results from the repository call
+        _logger.LogInformation("SearchOrdersAsync retrieved {OrderCount} orders, TotalCount: {TotalCount}",
+                               orders.Count, totalCount);
+
+        // Convert OrderEntities to OrderDtos
+        var orderDtos = OrderDtoFactory.CreateList(orders);
+
+        // Log the conversion process
+        _logger.LogInformation("Converted {OrderCount} OrderEntities to OrderDtos.", orderDtos.Count);
+
+        return (orderDtos, totalCount);
+    }
 
 
     public async Task<OrderEntity?> GetOrderByIdAsync(OrderRequest request)

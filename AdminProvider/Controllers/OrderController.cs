@@ -143,4 +143,36 @@ public class OrderController : ControllerBase
             return StatusCode(500, new { Message = "An error occurred while retrieving orders by date range." });
         }
     }
+    [HttpPost("search")]
+    public async Task<IActionResult> SearchOrders([FromBody] SearchRequest request)
+    {
+        try
+        {
+            // If query is empty, fetch all orders
+            if (string.IsNullOrEmpty(request.Query))
+            {
+                request.Query = "";  // You can optionally set this to an empty string or handle as null
+            }
+
+            var (orderDtos, totalCount) = await _orderService.SearchOrdersAsync(
+                request.Query, request.PageNumber, request.PageSize);
+
+            if (orderDtos == null || totalCount == 0)
+            {
+                return NotFound(new { Message = "No orders found." });
+            }
+
+            return Ok(new
+            {
+                Orders = orderDtos,
+                TotalCount = totalCount
+            });
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "Error retrieving orders.");
+            return StatusCode(500, new { Message = "An error occurred while retrieving orders." });
+        }
+    }
+
 }

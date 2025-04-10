@@ -1,4 +1,5 @@
-﻿using AdminProvider.ModeratorsManagement.Interfaces.Utillities;
+﻿using AdminProvider.ModeratorsManagement.Data.Entities;
+using AdminProvider.ModeratorsManagement.Interfaces.Utillities;
 using System.Security.Cryptography;
 
 namespace AdminProvider.ModeratorsManagement.Utillities;

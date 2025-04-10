@@ -8,6 +8,7 @@ using AdminProvider.ModeratorsManagement.Utillities;
 using Newtonsoft.Json;
 using JsonSerializer = System.Text.Json.JsonSerializer;
 using Newtonsoft.Json.Linq;
+using AdminProvider.ModeratorsManagement.Data.Entities;
 
 namespace AdminProvider.ModeratorsManagement.Services;
 
@@ -175,7 +176,9 @@ public class AdminService : IAdminService
         }
     }
 
-    public async Task PasswordChange(PasswordChangeRequest request)
+    public async Task PasswordChange()
+
+    public async Task PasswordChangeFirstTime(FirstPasswordChangeRequest request)
 {
     if (request == null)
     {
@@ -207,13 +210,17 @@ public class AdminService : IAdminService
         // 2️⃣ Find the admin
         var adminIdGuid = Guid.Parse(request.AdminId);
         var moderatorToUpdate = moderators.FirstOrDefault(p => p.AdminId == adminIdGuid);
-
+      
         if (moderatorToUpdate == null)
         {
             _logger.LogWarning($"Admin with ID {adminIdGuid} not found.");
             throw new InvalidOperationException("Moderator not found");
         }
-
+        if (moderatorToUpdate.PasswordChosen != null || moderatorToUpdate.PasswordChosen == false)
+        {
+            _logger.LogWarning($"It is not first time this admin is changing password");
+            throw new InvalidOperationException("It is not first password change.");
+        }
         _logger.LogInformation($"Admin {moderatorToUpdate.Email} found. Hashing new password...");
 
         // 3️⃣ Update the password

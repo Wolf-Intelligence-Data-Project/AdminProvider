@@ -8,6 +8,7 @@ using AdminProvider.ModeratorsManagement.Interfaces.Services;
 using Microsoft.AspNetCore.Mvc;
 using Microsoft.AspNetCore.Identity;
 using AdminProvider.ModeratorsManagement.Models.Responses;
+using AdminProvider.ModeratorsManagement.Data.Entities;
 
 namespace AdminProvider.ModeratorsManagement.Services;
 

@@ -3,6 +3,7 @@ using AuthenticationProvider.Models.Requests;
 using AdminProvider.ModeratorsManagement.Interfaces.Services;
 using Microsoft.AspNetCore.Authorization;
 using AdminProvider.ModeratorsManagement.Models.Requests;
+using AdminProvider.ModeratorsManagement.Data.Entities;
 
 namespace AdminProvider.Controllers;
 
@@ -119,7 +120,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPatch("password-change")]
-    public async Task<IActionResult> PasswordChange([FromBody] PasswordChangeRequest request)
+    public async Task<IActionResult> PasswordChange([FromBody] FirstPasswordChangeRequest request)
     {
         try
         {
@@ -131,7 +132,7 @@ public class AuthController : ControllerBase
 
             _logger.LogInformation($"✅ Received PasswordChangeRequest: Email = {request.AdminId}, Password = {request.Password}");
 
-            await _adminService.PasswordChange(request);
+            await _adminService.PasswordChangeFirstTime(request);
 
             _logger.LogInformation("✅ Password change process completed successfully.");
             return Ok(new { success = true, message = "Lösenordet har ändrats." });  // Ensure JSON response
