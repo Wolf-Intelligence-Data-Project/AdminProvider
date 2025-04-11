@@ -9,6 +9,8 @@ namespace AdminProvider.ModeratorsManagement.Interfaces.Services
     {
         Task<AdminDto> GetModeratorAsync();
         Task PasswordChangeAsync(PasswordChangeRequest request);
+        Task EmailChangeAsync(EmailChangeRequest request);
+        Task PhoneNumberChangeAsync(PhoneNumberChangeRequest request);
 
     }
 }

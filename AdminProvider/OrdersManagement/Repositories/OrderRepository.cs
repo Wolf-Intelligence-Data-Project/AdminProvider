@@ -1,7 +1,9 @@
 ﻿using AdminProvider.OrdersManagement.Data;
 using AdminProvider.OrdersManagement.Data.Entities;
 using AdminProvider.OrdersManagement.Interfaces;
+using AdminProvider.OrdersManagement.Models.Requests;
 using Microsoft.EntityFrameworkCore;
+using System.Globalization;
 
 namespace AdminProvider.OrdersManagement.Repositories;
 
@@ -26,45 +28,98 @@ public class OrderRepository : IOrderRepository
 
         return (orders, totalCount);
     }
-
     public async Task<(List<OrderEntity> Orders, int TotalCount)> SearchAsync(
-    string query, int pageNumber, int pageSize)
+        string query,
+        int pageNumber,
+        int pageSize,
+        string startDate,
+        string endDate,
+        List<SortCriteria> sortCriteria)
     {
-        _logger.LogInformation("SearchAsync called with parameters: Query = {Query}, PageNumber = {PageNumber}, PageSize = {PageSize}",
-                                query, pageNumber, pageSize);
+        var queryable = _orderDbContext.Orders.AsQueryable();
 
-        query = query?.Trim();
+        // Log query to verify the incoming query is '*'
+        _logger.LogInformation("Query received for search: {Query}", query);
 
-        // If query is empty or contains only spaces, fetch all orders
-        if (string.IsNullOrWhiteSpace(query))
+        // Apply sorting based on SortCriteria
+        if (sortCriteria != null && sortCriteria.Any())
         {
-            _logger.LogInformation("Empty query provided, fetching all orders.");
-            return await GetAllOrders(pageNumber, pageSize); // This should return all orders
+            IOrderedQueryable<OrderEntity>? orderedQuery = null;
+
+            foreach (var (sort, index) in sortCriteria.Select((s, i) => (s, i)))
+            {
+                var sortBy = sort.SortBy;
+                var sortDirection = sort.SortDirection.ToLower() == "desc" ? "desc" : "asc";
+
+                if (_orderDbContext.Model.FindEntityType(typeof(OrderEntity))
+                                         .GetProperties()
+                                         .Any(p => p.Name == sortBy))
+                {
+                    if (index == 0)
+                    {
+                        // First sort condition
+                        orderedQuery = sortDirection == "asc"
+                            ? queryable.OrderBy(e => EF.Property<object>(e, sortBy))
+                            : queryable.OrderByDescending(e => EF.Property<object>(e, sortBy));
+                    }
+                    else if (orderedQuery != null)
+                    {
+                        // Subsequent sort conditions
+                        orderedQuery = sortDirection == "asc"
+                            ? orderedQuery.ThenBy(e => EF.Property<object>(e, sortBy))
+                            : orderedQuery.ThenByDescending(e => EF.Property<object>(e, sortBy));
+                    }
+                }
+                else
+                {
+                    _logger.LogWarning($"Invalid sort property: {sortBy}. Skipping sorting for this field.");
+                }
+            }
+
+            if (orderedQuery != null)
+            {
+                queryable = orderedQuery;
+            }
+        }
+        else
+        {
+            // Default sort by CreatedAt in descending order (latest to oldest)
+            queryable = queryable.OrderByDescending(o => o.CreatedAt);
         }
 
-        var lowerQuery = $"%{query.ToLower()}%";
-        _logger.LogInformation("Sanitized query for DB search: {LowerQuery}", lowerQuery);
+        // Handle query == "*" or empty to return all orders
+        if (string.IsNullOrWhiteSpace(query) || query == "*")
+        {
+            _logger.LogInformation("Fetching all orders (no query filter applied).");
+        }
+        else
+        {
+            // If query is provided, filter based on query
+            queryable = queryable.Where(o =>
+                o.OrderId.ToString().Contains(query) ||
+                o.CustomerId.ToString().Contains(query));
+        }
 
-        var baseQuery = _orderDbContext.Orders
-            .Where(order =>
-                EF.Functions.Like(order.OrderId.ToString().ToLower(), lowerQuery) ||
-                EF.Functions.Like(order.CustomerId.ToString().ToLower(), lowerQuery) ||
-                EF.Functions.Like(order.CustomerEmail.ToLower(), lowerQuery));
+        if (!string.IsNullOrEmpty(startDate))
+        {
+            queryable = queryable.Where(o => o.CreatedAt >= DateTime.Parse(startDate));
+        }
 
-        var totalCount = await baseQuery.CountAsync();  // Count matching records
-        _logger.LogInformation("Total orders found: {TotalCount}", totalCount);
+        if (!string.IsNullOrEmpty(endDate))
+        {
+            queryable = queryable.Where(o => o.CreatedAt <= DateTime.Parse(endDate));
+        }
 
-        var orders = await baseQuery
-            .OrderByDescending(o => o.CreatedAt)
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
+        // Get the total count before pagination
+        var totalCount = await queryable.CountAsync();
+
+        // Apply pagination
+        var orders = await queryable.Skip((pageNumber - 1) * pageSize)
+                                     .Take(pageSize)
+                                     .ToListAsync();
 
         return (orders, totalCount);
     }
-
-
-
 
     // New method to fetch all orders with pagination
     private async Task<(List<OrderEntity> Orders, int TotalCount)> GetAllOrders(int pageNumber, int pageSize)

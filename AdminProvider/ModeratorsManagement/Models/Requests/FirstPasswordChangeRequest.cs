@@ -13,4 +13,6 @@ public class FirstPasswordChangeRequest
     [RegularExpression(@"^(?=.*[A-Za-z])(?=.*\d)(?=.*[!@#$%^&*()_+={}\[\]:;'<>?\/.,]).{8,}$",
        ErrorMessage = "Lösenordet måste innehålla minst en bokstav, en siffra och ett specialtecken.")]
     public string Password { get; set; }
+
+    public string ConfirmPassword { get; set; }
 }

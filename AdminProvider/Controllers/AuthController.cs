@@ -130,8 +130,6 @@ public class AuthController : ControllerBase
                 return BadRequest(new { success = false, message = "Uppgifter saknas." });
             }
 
-            _logger.LogInformation($"✅ Received PasswordChangeRequest: Email = {request.AdminId}, Password = {request.Password}");
-
             await _adminService.PasswordChangeFirstTime(request);
 
             _logger.LogInformation("✅ Password change process completed successfully.");

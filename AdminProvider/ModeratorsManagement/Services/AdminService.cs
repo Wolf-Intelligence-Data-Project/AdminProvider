@@ -221,6 +221,11 @@ public class AdminService : IAdminService
         }
         _logger.LogInformation($"Admin {moderatorToUpdate.Email} found. Hashing new password...");
 
+        if (request.Password != request.ConfirmPassword)
+            {
+                _logger.LogError($"Error during password change.");
+                throw new InvalidOperationException("");
+            }
         // 3️⃣ Update the password
         var newPasswordHash = _customPasswordHasher.HashPassword(request.Password);
         moderatorToUpdate.PasswordHash = newPasswordHash;

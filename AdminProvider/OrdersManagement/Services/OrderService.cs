@@ -3,6 +3,7 @@ using AdminProvider.OrdersManagement.Factories;
 using AdminProvider.OrdersManagement.Interfaces;
 using AdminProvider.OrdersManagement.Models.DTOs;
 using AdminProvider.OrdersManagement.Models.Requests;
+using System.Globalization;
 
 namespace AdminProvider.OrdersManagement.Services;
 
@@ -28,15 +29,21 @@ public class OrderService : IOrderService
         return (orderDtos, totalCount);
     }
 
-    public async Task<(List<OrderDto> Orders, int TotalCount)> SearchOrdersAsync(
-     string query, int pageNumber, int pageSize)
+    public async Task<(List<OrderDto> Orders, int TotalCount)> SearchOrdersAsync(SearchRequest request)
     {
         // Log input parameters for debugging
         _logger.LogInformation("SearchOrdersAsync called with parameters: Query = {Query}, PageNumber = {PageNumber}, PageSize = {PageSize}",
-                               query, pageNumber, pageSize);
+                               request.Query, request.PageNumber, request.PageSize);
 
-        // Call the repository to search for orders
-        var (orders, totalCount) = await _orderRepository.SearchAsync(query, pageNumber, pageSize);
+        // Call the repository to search for orders, passing in SortCriteria from the request
+        var (orders, totalCount) = await _orderRepository.SearchAsync(
+            request.Query,
+            request.PageNumber,
+            request.PageSize,
+            request.StartDate,
+            request.EndDate,
+            request.SortCriteria // Pass the SortCriteria directly, no need to convert to List<string>
+        );
 
         // Log results from the repository call
         _logger.LogInformation("SearchOrdersAsync retrieved {OrderCount} orders, TotalCount: {TotalCount}",
@@ -50,6 +57,7 @@ public class OrderService : IOrderService
 
         return (orderDtos, totalCount);
     }
+
 
 
     public async Task<OrderEntity?> GetOrderByIdAsync(OrderRequest request)

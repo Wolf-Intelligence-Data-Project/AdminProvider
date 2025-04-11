@@ -237,5 +237,151 @@ public class ProfileService : IProfileService
         }
     }
 
+    public async Task EmailChangeAsync(EmailChangeRequest request)
+    {
+        if (request == null)
+        {
+            _logger.LogWarning("Email change request is null.");
+            throw new ArgumentNullException(nameof(request), "Email change request cannot be null");
+        }
+
+        try
+        {
+            _logger.LogInformation("Processing email change request for current moderator...");
+
+            var moderator = await GetModeratorCompleteAsync();
+            if (moderator == null)
+            {
+                _logger.LogWarning("Moderator could not be found or token is invalid.");
+                throw new InvalidOperationException("Moderator not found or not authorized.");
+            }
+
+            var moderatorId = moderator["AdminId"]?.ToString();
+            if (!Guid.TryParse(moderatorId, out var adminId))
+            {
+                _logger.LogWarning("Moderator AdminId is invalid or missing.");
+                throw new InvalidOperationException("Ogiltigt moderator-ID.");
+            }
+
+            string filePath = Path.Combine(Directory.GetCurrentDirectory(), "appsettings.json");
+            string json = await File.ReadAllTextAsync(filePath);
+            var configRoot = JsonConvert.DeserializeObject<Dictionary<string, object>>(json);
+
+            if (!configRoot.TryGetValue("Admins", out var adminsToken) || adminsToken is not JArray)
+            {
+                _logger.LogError("The 'Admins' section in appsettings.json is missing or not an array.");
+                throw new InvalidOperationException("Admins-sektionen saknas eller är ogiltig.");
+            }
+
+            var admins = JsonConvert.DeserializeObject<List<AdminEntity>>(adminsToken.ToString());
+            var adminEntity = admins.FirstOrDefault(a => a.AdminId == adminId);
+
+            if (adminEntity == null)
+            {
+                _logger.LogWarning("No admin found with ID {AdminId}.", adminId);
+                throw new InvalidOperationException("Ingen administratör hittades.");
+            }
+
+            // 🔐 Verify current password
+            var isCurrentPasswordValid = _customPasswordHasher.VerifyHashedPassword(
+                adminEntity,
+                adminEntity.PasswordHash,
+                request.CurrentPassword
+            );
+
+            if (!isCurrentPasswordValid)
+            {
+                _logger.LogWarning("Email change failed: Current password is incorrect.");
+                throw new InvalidOperationException("Felaktiga uppgifter.");
+            }
+
+            // 📧 Update email
+            adminEntity.Email = request.Email;
+
+            configRoot["Admins"] = admins;
+            string updatedJson = JsonConvert.SerializeObject(configRoot, Formatting.Indented);
+            await File.WriteAllTextAsync(filePath, updatedJson);
+
+            _logger.LogInformation($"Email successfully updated for Admin ID: {adminId}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error occurred while changing the email.");
+            throw;
+        }
+    }
+    public async Task PhoneNumberChangeAsync(PhoneNumberChangeRequest request)
+    {
+        if (request == null)
+        {
+            _logger.LogWarning("Phone number change request is null.");
+            throw new ArgumentNullException(nameof(request), "Phone number change request cannot be null");
+        }
+
+        try
+        {
+            _logger.LogInformation("Processing phone number change request for current moderator...");
+
+            var moderator = await GetModeratorCompleteAsync();
+            if (moderator == null)
+            {
+                _logger.LogWarning("Moderator could not be found or token is invalid.");
+                throw new InvalidOperationException("Moderator not found or not authorized.");
+            }
+
+            var moderatorId = moderator["AdminId"]?.ToString();
+            if (!Guid.TryParse(moderatorId, out var adminId))
+            {
+                _logger.LogWarning("Moderator AdminId is invalid or missing.");
+                throw new InvalidOperationException("Ogiltigt moderator-ID.");
+            }
+
+            string filePath = Path.Combine(Directory.GetCurrentDirectory(), "appsettings.json");
+            string json = await File.ReadAllTextAsync(filePath);
+            var configRoot = JsonConvert.DeserializeObject<Dictionary<string, object>>(json);
+
+            if (!configRoot.TryGetValue("Admins", out var adminsToken) || adminsToken is not JArray)
+            {
+                _logger.LogError("The 'Admins' section in appsettings.json is missing or not an array.");
+                throw new InvalidOperationException("Admins-sektionen saknas eller är ogiltig.");
+            }
+
+            var admins = JsonConvert.DeserializeObject<List<AdminEntity>>(adminsToken.ToString());
+            var adminEntity = admins.FirstOrDefault(a => a.AdminId == adminId);
+
+            if (adminEntity == null)
+            {
+                _logger.LogWarning("No admin found with ID {AdminId}.", adminId);
+                throw new InvalidOperationException("Ingen administratör hittades.");
+            }
+
+            // 🔐 Verify current password
+            var isCurrentPasswordValid = _customPasswordHasher.VerifyHashedPassword(
+                adminEntity,
+                adminEntity.PasswordHash,
+                request.CurrentPassword
+            );
+
+            if (!isCurrentPasswordValid)
+            {
+                _logger.LogWarning("Phone number change failed: Current password is incorrect.");
+                throw new InvalidOperationException("Felaktiga uppgifter.");
+            }
+
+            // ☎️ Update phone number
+            adminEntity.PhoneNumber = request.PhoneNumber;
+
+            configRoot["Admins"] = admins;
+            string updatedJson = JsonConvert.SerializeObject(configRoot, Formatting.Indented);
+            await File.WriteAllTextAsync(filePath, updatedJson);
+
+            _logger.LogInformation($"Phone number successfully updated for Admin ID: {adminId}");
+        }
+        catch (Exception ex)
+        {
+            _logger.LogError(ex, "An error occurred while changing the phone number.");
+            throw;
+        }
+    }
 
 }

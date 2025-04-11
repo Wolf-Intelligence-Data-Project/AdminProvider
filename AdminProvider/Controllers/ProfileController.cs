@@ -74,6 +74,71 @@ namespace AdminProvider.Controllers
                 return StatusCode(500, "Ett oväntat fel uppstod. Försök igen senare.");
             }
         }
+        [HttpPatch("change-email")]
+        public async Task<IActionResult> EmailChange([FromBody] EmailChangeRequest request)
+        {
+            _logger.LogInformation("Incoming password change request: {@Request}", request);
 
+            if (request == null)
+            {
+                return BadRequest("Felaktiga uppgifter. Försök igen."); // Invalid input
+            }
+
+            if (!ModelState.IsValid)
+            {
+                var errors = string.Join(", ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage));
+                _logger.LogWarning("Invalid data received: {Errors}", errors);
+                return BadRequest($"Ogiltiga uppgifter: {errors}");
+            }
+
+            try
+            {
+                await _profileService.EmailChangeAsync(request);
+                return Ok("Lösenordet har uppdaterats.");
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Verifieringsfel vid lösenordsändring.");
+                return BadRequest(ex.Message); // User-friendly messages are already in Swedish
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ett internt fel uppstod vid lösenordsändring.");
+                return StatusCode(500, "Ett oväntat fel uppstod. Försök igen senare.");
+            }
+        }
+        [HttpPatch("change-phonenumber")]
+        public async Task<IActionResult> PhoneNumberChange([FromBody] PhoneNumberChangeRequest request)
+        {
+            _logger.LogInformation("Incoming password change request: {@Request}", request);
+
+            if (request == null)
+            {
+                return BadRequest("Felaktiga uppgifter. Försök igen."); // Invalid input
+            }
+
+            if (!ModelState.IsValid)
+            {
+                var errors = string.Join(", ", ModelState.Values.SelectMany(v => v.Errors).Select(e => e.ErrorMessage));
+                _logger.LogWarning("Invalid data received: {Errors}", errors);
+                return BadRequest($"Ogiltiga uppgifter: {errors}");
+            }
+
+            try
+            {
+                await _profileService.PhoneNumberChangeAsync(request);
+                return Ok("Lösenordet har uppdaterats.");
+            }
+            catch (InvalidOperationException ex)
+            {
+                _logger.LogWarning(ex, "Verifieringsfel vid lösenordsändring.");
+                return BadRequest(ex.Message); 
+            }
+            catch (Exception ex)
+            {
+                _logger.LogError(ex, "Ett internt fel uppstod vid lösenordsändring.");
+                return StatusCode(500, "Ett oväntat fel uppstod. Försök igen senare.");
+            }
+        }
     }
 }

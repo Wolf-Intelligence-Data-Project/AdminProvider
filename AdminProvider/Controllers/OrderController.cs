@@ -146,16 +146,19 @@ public class OrderController : ControllerBase
     [HttpPost("search")]
     public async Task<IActionResult> SearchOrders([FromBody] SearchRequest request)
     {
+        // Log all request properties
+        _logger.LogInformation("Received search request: Query: {Query}, PageNumber: {PageNumber}, PageSize: {PageSize}, StartDate: {StartDate}, EndDate: {EndDate}, SortCriteria: {SortCriteria}",
+                               request.Query, request.PageNumber, request.PageSize, request.StartDate, request.EndDate, request.SortCriteria);
+
         try
         {
-            // If query is empty, fetch all orders
-            if (string.IsNullOrEmpty(request.Query))
+            // Normalize query to empty string if it contains only whitespace or is null
+            if (string.IsNullOrWhiteSpace(request.Query))
             {
-                request.Query = "";  // You can optionally set this to an empty string or handle as null
+                request.Query = "";  // Treat any query with only spaces as an empty query
             }
 
-            var (orderDtos, totalCount) = await _orderService.SearchOrdersAsync(
-                request.Query, request.PageNumber, request.PageSize);
+            var (orderDtos, totalCount) = await _orderService.SearchOrdersAsync(request);
 
             if (orderDtos == null || totalCount == 0)
             {
