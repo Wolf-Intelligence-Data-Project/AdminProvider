@@ -59,7 +59,7 @@ public class SignInService : ISignInService
 
         try
         {
-            // Retrieve the admins from the configuration (appsettings.json)
+            // Retrieve the admins from the configuration ´file
             var admins = _configuration.GetSection("Admins").Get<List<AdminEntity>>() ?? new List<AdminEntity>();
             var adminEntity = admins.FirstOrDefault(a => a.Email == signInRequest.Email);
 

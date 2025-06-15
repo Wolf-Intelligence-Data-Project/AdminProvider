@@ -23,17 +23,16 @@ using System.Text;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
 
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 builder.Services.AddHttpContextAccessor();
 builder.Services.AddMemoryCache();
 builder.Services.AddHttpClient();
-// Access Token Validation
+
 builder.Services.AddAuthentication("Bearer")
     .AddJwtBearer(options =>
     {
@@ -46,7 +45,7 @@ builder.Services.AddAuthentication("Bearer")
             IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(builder.Configuration["JwtAccess:Key"])),
             ValidIssuer = builder.Configuration["JwtAccess:Issuer"],
             ValidAudience = builder.Configuration["JwtAccess:Audience"],
-            ClockSkew = TimeSpan.Zero, // No clock skew for strict expiration checks
+            ClockSkew = TimeSpan.Zero,
         };
 
         options.Events = new JwtBearerEvents
@@ -76,7 +75,6 @@ builder.Services.AddAuthentication("Bearer")
                     return Task.CompletedTask;
                 }
 
-                // Extract role claim
                 var roleClaim = claimsIdentity.FindFirst(ClaimTypes.Role)?.Value;
 
                 if (string.IsNullOrEmpty(roleClaim))
@@ -85,7 +83,6 @@ builder.Services.AddAuthentication("Bearer")
                     return Task.CompletedTask;
                 }
 
-                // Log the extracted role (for debugging)
                 var logger = context.HttpContext.RequestServices.GetRequiredService<ILogger<Program>>();
                 logger.LogInformation($"Användarens roll: {roleClaim}");
 
@@ -121,7 +118,6 @@ builder.Services.AddScoped<IProductRepository, ProductRepository>();
 builder.Services.AddScoped<IOrderRepository, OrderRepository>();
 builder.Services.AddScoped<IOrderService, OrderService>();
 
-// Configure Database
 builder.Services.AddDbContext<ProductDbContext>(options =>
     options.UseSqlServer(builder.Configuration.GetConnectionString("ProductDatabase")), ServiceLifetime.Scoped);
 builder.Services.AddDbContext<OrderDbContext>(options =>
@@ -140,16 +136,15 @@ builder.Services.AddCors(options =>
 {
     options.AddPolicy("AllowFrontend", builder =>
     {
-        builder.WithOrigins("http://localhost:5000") // Frontend URL
+        builder.WithOrigins("http://localhost:5000")
                .AllowAnyHeader()
                .AllowAnyMethod()
-               .AllowCredentials(); // Allow credentials (cookies, tokens)
+               .AllowCredentials();
     });
 });
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();

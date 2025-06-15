@@ -32,24 +32,19 @@ public class SignOutService : ISignOutService
 
         try
         {
-            // Check if the token is valid and retrieve the authentication and verification statuses
-            var isAuthenticated = _accessTokenService.ValidateAccessToken(); // Retrieve authentication and verification status
+            var isAuthenticated = _accessTokenService.ValidateAccessToken();
 
-            // Log if token is invalid or expired, but allow sign-out regardless
             if (!isAuthenticated.IsAuthenticated)
             {
                 _logger.LogInformation("Token is invalid or expired, proceeding with sign-out.");
             }
 
-            // You can still revoke the token even if it's invalid or expired
-            var adminId = _accessTokenService.GetAdminIdFromToken(token); // Get adminId from token if possible
+            var adminId = _accessTokenService.GetAdminIdFromToken(token);
 
-
-            // Revoke the token
-            await _accessTokenService.RevokeAndBlacklistAccessToken(adminId); // Revoke token from service
+            await _accessTokenService.RevokeAndBlacklistAccessToken(adminId);
 
             _logger.LogInformation("Token successfully removed during sign-out.");
-            return true;  // Return true as token revocation was successful
+            return true; 
         }
         catch (Exception ex)
         {

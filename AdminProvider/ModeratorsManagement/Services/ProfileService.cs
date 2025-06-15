@@ -101,7 +101,6 @@ public class ProfileService : IProfileService
 
         var cookies = _httpContextAccessor.HttpContext.Request.Cookies;
 
-        // Check for the access token in the cookies
         if (!cookies.TryGetValue(cookieName, out var token) || string.IsNullOrWhiteSpace(token))
         {
             _logger.LogWarning("Access token not found in cookies.");
@@ -111,7 +110,7 @@ public class ProfileService : IProfileService
         JwtSecurityToken jwtToken;
         try
         {
-            jwtToken = new JwtSecurityTokenHandler().ReadJwtToken(token); // Parse the JWT token
+            jwtToken = new JwtSecurityTokenHandler().ReadJwtToken(token);
         }
         catch (Exception ex)
         {
@@ -119,7 +118,6 @@ public class ProfileService : IProfileService
             throw new UnauthorizedAccessException("Invalid access token.");
         }
 
-        // Extract adminId from the JWT token claims
         var adminIdClaim = jwtToken.Claims.FirstOrDefault(c => c.Type == "adminId");
         if (adminIdClaim == null || !Guid.TryParse(adminIdClaim.Value, out var adminId))
         {
@@ -127,7 +125,6 @@ public class ProfileService : IProfileService
             throw new UnauthorizedAccessException("Invalid token claims.");
         }
 
-        // Read the admin data from appsettings.json
         var filePath = Path.Combine(Directory.GetCurrentDirectory(), "appsettings.json");
         var json = await File.ReadAllTextAsync(filePath);
         var jsonObj = JObject.Parse(json);
@@ -139,7 +136,6 @@ public class ProfileService : IProfileService
             throw new InvalidOperationException("No moderators found.");
         }
 
-        // Find the admin based on the adminId from the JWT token
         var foundAdmin = adminsArray.FirstOrDefault(a =>
             Guid.TryParse(a["AdminId"]?.ToString(), out var id) && id == adminId);
 
@@ -149,8 +145,8 @@ public class ProfileService : IProfileService
             throw new KeyNotFoundException("Moderator not found.");
         }
         _logger.LogWarning(foundAdmin.ToString());
-        // Cast foundAdmin to JObject before returning
-        return (JObject)foundAdmin; // Explicitly cast to JObject
+
+        return (JObject)foundAdmin;
     }
 
 
@@ -199,27 +195,24 @@ public class ProfileService : IProfileService
                 throw new InvalidOperationException("Ingen administratör hittades.");
             }
 
-            // 🔐 1️⃣ Verify CURRENT password
             var isCurrentPasswordValid = _customPasswordHasher.VerifyHashedPassword(
                 adminEntity,
                 adminEntity.PasswordHash,
-                request.CurrentPassword // <-- THIS is the correct password to verify
+                request.CurrentPassword 
             );
 
             if (!isCurrentPasswordValid)
             {
                 _logger.LogWarning("Password change failed: Current password is incorrect.");
-                throw new InvalidOperationException("Felaktiga uppgifter."); // Incorrect credentials
+                throw new InvalidOperationException("Felaktiga uppgifter.");
             }
 
-            // 🔁 2️⃣ Check if new passwords match
             if (request.NewPassword != request.ConfirmPassword)
             {
                 _logger.LogWarning("Password change failed: New password and confirmation do not match.");
                 throw new InvalidOperationException("Lösenorden stämmer inte överens.");
             }
 
-            // 🔐 3️⃣ Update password
             var hashedPassword = _customPasswordHasher.HashPassword(request.NewPassword);
             adminEntity.PasswordHash = hashedPassword;
             adminEntity.PasswordChosen = true;
@@ -282,7 +275,6 @@ public class ProfileService : IProfileService
                 throw new InvalidOperationException("Ingen administratör hittades.");
             }
 
-            // 🔐 Verify current password
             var isCurrentPasswordValid = _customPasswordHasher.VerifyHashedPassword(
                 adminEntity,
                 adminEntity.PasswordHash,
@@ -295,7 +287,6 @@ public class ProfileService : IProfileService
                 throw new InvalidOperationException("Felaktiga uppgifter.");
             }
 
-            // 📧 Update email
             adminEntity.Email = request.Email;
 
             configRoot["Admins"] = admins;
@@ -355,7 +346,6 @@ public class ProfileService : IProfileService
                 throw new InvalidOperationException("Ingen administratör hittades.");
             }
 
-            // 🔐 Verify current password
             var isCurrentPasswordValid = _customPasswordHasher.VerifyHashedPassword(
                 adminEntity,
                 adminEntity.PasswordHash,
@@ -368,7 +358,6 @@ public class ProfileService : IProfileService
                 throw new InvalidOperationException("Felaktiga uppgifter.");
             }
 
-            // ☎️ Update phone number
             adminEntity.PhoneNumber = request.PhoneNumber;
 
             configRoot["Admins"] = admins;

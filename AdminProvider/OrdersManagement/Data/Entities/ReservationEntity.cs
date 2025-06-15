@@ -5,12 +5,10 @@ namespace AdminProvider.OrdersManagement.Data.Entities;
 public class ReservationEntity
 {
     [Required]
-    public Guid ReservationId { get; set; }  // Primary key for this table
+    public Guid ReservationId { get; set; }
 
     [Required]
     public Guid CustomerId { get; set; }
-
-    // These 4 could be saved as list of strings but frontend has a problem sending like that inside object (for now)
     public string? BusinessTypes { get; set; }
     public string? Regions { get; set; }
     public string? CitiesByRegion { get; set; }

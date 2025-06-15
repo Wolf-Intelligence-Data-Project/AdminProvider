@@ -16,8 +16,8 @@ public class UserRepository : IUserRepository
     }
     public async Task<(List<UserEntity>, int, int)> GetAllUsersAsync(int pageNumber, int pageSize)
     {
-        var totalCount = await _userDbContext.Users.CountAsync(); // Total users count
-        var companyCount = await _userDbContext.Users.CountAsync(u => u.IsCompany); // Count of companies
+        var totalCount = await _userDbContext.Users.CountAsync(); 
+        var companyCount = await _userDbContext.Users.CountAsync(u => u.IsCompany);
 
         var users = await _userDbContext.Users
             .Skip((pageNumber - 1) * pageSize)
@@ -51,13 +51,12 @@ public class UserRepository : IUserRepository
             throw new ArgumentNullException("The search term is empty.");
         }
 
-        // Return all matching users instead of just one
         var users = await _userDbContext.Users
             .Where(u => u.Email.Contains(searchTerm) ||
                         u.FullName.Contains(searchTerm) ||
                         u.CompanyName.Contains(searchTerm) ||
                         u.IdentificationNumber.Contains(searchTerm))
-            .ToListAsync(); // Get all matching users
+            .ToListAsync(); 
 
         return users;
     }
@@ -74,12 +73,11 @@ public class UserRepository : IUserRepository
 
             user.AdminNote = adminNote;
 
-            // Mark the specific property as modified
             _userDbContext.Entry(user).Property(u => u.AdminNote).IsModified = true;
 
             await _userDbContext.SaveChangesAsync();
 
-            return user.AdminNote; // Return the updated entity
+            return user.AdminNote; 
         }
         catch (Exception ex)
         {

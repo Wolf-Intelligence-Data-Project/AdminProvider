@@ -27,7 +27,6 @@ public class UserService : IUserService
 
         var usersDto = UsersDtoFactory.CreateList(users);
 
-        // Get all customer IDs from users to optimize fetching order counts
         var customerIds = usersDto.Select(u => u.UserId).ToList();
 
         // Fetch all order counts for these customer IDs in bulk
@@ -42,7 +41,7 @@ public class UserService : IUserService
             }
             else
             {
-                userDto.OrderCount = 0; // No orders found for this customer
+                userDto.OrderCount = 0;
             }
         }
 
@@ -52,7 +51,6 @@ public class UserService : IUserService
 
     public async Task<List<UserDto>> GetUsersByQueryAsync(string searchQuery)
     {
-        // Get the list of UserEntity objects based on the search query
         var users = await _userRepository.GetUsersByQueryAsync(searchQuery);
 
         // Convert UserEntity objects to UsersDto
@@ -63,10 +61,8 @@ public class UserService : IUserService
 
     public async Task<UserDetailsDto> GetUserAsync(string userId)
     {
-        // Try to parse the userId to a Guid
         if (Guid.TryParse(userId, out var userGuid))
         {
-            // Fetch the user details from the repository
             var user = await _userRepository.GetByIdAsync(userGuid);
 
             if (user == null)
@@ -74,7 +70,6 @@ public class UserService : IUserService
                 throw new KeyNotFoundException("User not found");
             }
 
-            // Fetch the order count for the user
             var orderCount = await GetOrderCountByCustomerIdAsync(userGuid.ToString());
 
             // Convert the user entity to a UserDetailsDto
@@ -104,7 +99,6 @@ public class UserService : IUserService
             CustomerId = o.CustomerId,
             CreatedAt = o.CreatedAt,
             Quantity = o.Quantity,
-            // map more fields if needed
         }).ToList();
     }
 

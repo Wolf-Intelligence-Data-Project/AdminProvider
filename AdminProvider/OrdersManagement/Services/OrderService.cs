@@ -23,36 +23,57 @@ public class OrderService : IOrderService
     {
         var (orders, totalCount) = await _orderRepository.GetAllAsync(pageNumber, pageSize);
 
-        // Convert OrderEntities to OrderDtos
         var orderDtos = OrderDtoFactory.CreateList(orders);
 
         return (orderDtos, totalCount);
     }
+    public async Task<OrderSummaryDto> GetOrderSummaryAsync()
+    {
+        var now = DateTime.UtcNow;
+
+        var total = await _orderRepository.CountAllOrdersAsync();
+
+        // Last 24 Hours
+        var last24h = await _orderRepository.CountOrdersSinceAsync(now.AddHours(-24));
+
+        // Last 7 Days (exclude Last 24h)
+        var last7d = await _orderRepository.CountOrdersSinceAsync(now.AddDays(-7), now.AddHours(-24));
+
+        // Last 30 Days (exclude Last 7 days)
+        var last30d = await _orderRepository.CountOrdersSinceAsync(now.AddDays(-30), now.AddDays(-7));
+
+        // Last 6 Months (exclude Last 30 days)
+        var last6mo = await _orderRepository.CountOrdersSinceAsync(now.AddMonths(-6), now.AddDays(-30));
+
+        return new OrderSummaryDto
+        {
+            TotalOrders = total,
+            Last24h = last24h,
+            Last7d = last7d,
+            Last30d = last30d,
+            Last6mo = last6mo
+        };
+    }
 
     public async Task<(List<OrderDto> Orders, int TotalCount)> SearchOrdersAsync(SearchRequest request)
     {
-        // Log input parameters for debugging
         _logger.LogInformation("SearchOrdersAsync called with parameters: Query = {Query}, PageNumber = {PageNumber}, PageSize = {PageSize}",
                                request.Query, request.PageNumber, request.PageSize);
 
-        // Call the repository to search for orders, passing in SortCriteria from the request
         var (orders, totalCount) = await _orderRepository.SearchAsync(
             request.Query,
             request.PageNumber,
             request.PageSize,
             request.StartDate,
             request.EndDate,
-            request.SortCriteria // Pass the SortCriteria directly, no need to convert to List<string>
+            request.SortCriteria
         );
 
-        // Log results from the repository call
         _logger.LogInformation("SearchOrdersAsync retrieved {OrderCount} orders, TotalCount: {TotalCount}",
                                orders.Count, totalCount);
 
-        // Convert OrderEntities to OrderDtos
         var orderDtos = OrderDtoFactory.CreateList(orders);
 
-        // Log the conversion process
         _logger.LogInformation("Converted {OrderCount} OrderEntities to OrderDtos.", orderDtos.Count);
 
         return (orderDtos, totalCount);

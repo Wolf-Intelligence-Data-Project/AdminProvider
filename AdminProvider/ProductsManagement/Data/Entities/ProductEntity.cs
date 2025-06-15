@@ -16,7 +16,7 @@ public class ProductEntity
     public decimal Revenue { get; set; }
     public int NumberOfEmployees { get; set; }
     public string CEO { get; set; }
-    public DateTime? SoldUntil { get; set; }  // When the product is no longer available
-    public Guid? CustomerId { get; set; }  // User ID who bought the product
-    public DateTime? ReservedUntil { get; set; }  // How long it’s reserved
+    public DateTime? SoldUntil { get; set; } 
+    public Guid? CustomerId { get; set; }
+    public DateTime? ReservedUntil { get; set; }
 }

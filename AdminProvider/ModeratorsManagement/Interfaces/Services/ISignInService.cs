@@ -8,5 +8,4 @@ public interface ISignInService
 
     Task<SignInResponse> SignInAsync(SignInRequest signInRequest);
 
-
 }

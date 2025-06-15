@@ -66,14 +66,12 @@ public class AdminController : ControllerBase
      [HttpDelete("delete-mod")]
     public async Task<IActionResult> DeleteModerator(DeleteRequest request)
     {
-        // Check if request is valid
         if (request == null)
         {
             return BadRequest("Invalid admin request data.");
         }
         if (!ModelState.IsValid)
         {
-            // You can return all validation errors like this:
             var errors = ModelState.Values
                 .SelectMany(v => v.Errors)
                 .Select(e => e.ErrorMessage)
@@ -83,18 +81,14 @@ public class AdminController : ControllerBase
         }
         try
         {          
-            // Call the service to add the moderator
             await _adminService.DeleteModerator(request);
 
-            // Return a response with the new admin data
             return Ok();
         }
         catch (Exception ex)
         {
-            // Log the exception (ensure you have a logger available)
             _logger.LogError(ex, "Error occurred while adding admin.");
 
-            // Return a generic error response
             return StatusCode(500, "Internal server error. Please try again later.");
         }
     }

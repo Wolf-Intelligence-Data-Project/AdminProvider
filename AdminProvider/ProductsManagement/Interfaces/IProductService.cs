@@ -1,10 +1,9 @@
 ﻿using AdminProvider.ProductsManagement.Models;
 
-namespace AdminProvider.ProductsManagement.Interfaces
+namespace AdminProvider.ProductsManagement.Interfaces;
+
+public interface IProductService
 {
-    public interface IProductService
-    {
-        Task<ProductsCountResponse> GetProductsCountAsync();
-        Task ImportProductsFromExcelAsync(IFormFile file);
-    }
+    Task<ProductsCountResponse> GetProductsCountAsync();
+    Task ImportProductsFromExcelAsync(IFormFile file);
 }

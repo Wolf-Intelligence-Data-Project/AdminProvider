@@ -58,7 +58,6 @@ public class ProductRepository : IProductRepository
                     }
                     else
                     {
-                        // Insert new product (ProductId is generated automatically)
                         await _productDbContext.Products.AddAsync(product);
                         _logger.LogInformation("Inserted new product with OrganizationNumber: {OrganizationNumber}", product.OrganizationNumber);
                     }
@@ -84,59 +83,6 @@ public class ProductRepository : IProductRepository
         _logger.LogInformation("Finished processing all products.");
     }
 
-
-    // Method to safely convert values to decimal
-    private decimal ConvertToDecimal(object value)
-    {
-        try
-        {
-            // Check if the value is already a decimal
-            if (value is decimal decimalValue)
-            {
-                return decimalValue;
-            }
-            // Check if the value is an int
-            else if (value is int intValue)
-            {
-                return (decimal)intValue;
-            }
-            // Check if the value is a double
-            else if (value is double doubleValue)
-            {
-                return (decimal)doubleValue;
-            }
-            // Handle cases where it's an unsupported type (return default 0)
-            else
-            {
-                _logger.LogWarning("Revenue value is of unsupported type, defaulting to 0.");
-                return 0m;
-            }
-        }
-        catch (Exception ex)
-        {
-            _logger.LogError(ex, "Error converting value to decimal.");
-            return 0m; // Default to 0 if any errors occur
-        }
-    }
-
-    private decimal GetRevenueFromReader(SqlDataReader reader, int index)
-    {
-        var value = reader.GetValue(index); // Get the raw value from the database
-
-        if (value is int intValue)
-        {
-            return (decimal)intValue; // Convert int to decimal
-        }
-        else if (value is decimal decimalValue)
-        {
-            return decimalValue; // Already a decimal, no conversion needed
-        }
-        else
-        {
-            // Handle other possible types or throw an exception if necessary
-            throw new InvalidCastException("Cannot cast value to decimal");
-        }
-    }
     public async Task<ProductsCountResponse> GetProductCountAsync()
     {
         const string sql = @"

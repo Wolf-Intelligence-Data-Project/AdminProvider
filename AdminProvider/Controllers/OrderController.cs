@@ -36,12 +36,11 @@ public class OrderController : ControllerBase
             }
             else
             {
-                _logger.LogInformation("Fetched Orders: {@Orders}", orderDtos);  // Log without serialization
+                _logger.LogInformation("Fetched Orders: {@Orders}", orderDtos);
             }
 
             _logger.LogInformation("Total Orders Count: {TotalCount}", totalCount);
 
-            // Log the result to check what's being returned
             _logger.LogInformation("Result from GetAllOrdersAsync: {@Result}", orderDtos);
 
             if (orderDtos == null || totalCount == 0)
@@ -55,7 +54,6 @@ public class OrderController : ControllerBase
                 TotalCount = totalCount,
             };
 
-            // Serialize the result into JSON string
             _logger.LogInformation("Result: {Result}", JsonConvert.SerializeObject(result));
 
             return Ok(result);
@@ -146,16 +144,14 @@ public class OrderController : ControllerBase
     [HttpPost("search")]
     public async Task<IActionResult> SearchOrders([FromBody] SearchRequest request)
     {
-        // Log all request properties
         _logger.LogInformation("Received search request: Query: {Query}, PageNumber: {PageNumber}, PageSize: {PageSize}, StartDate: {StartDate}, EndDate: {EndDate}, SortCriteria: {SortCriteria}",
                                request.Query, request.PageNumber, request.PageSize, request.StartDate, request.EndDate, request.SortCriteria);
 
         try
         {
-            // Normalize query to empty string if it contains only whitespace or is null
             if (string.IsNullOrWhiteSpace(request.Query))
             {
-                request.Query = "";  // Treat any query with only spaces as an empty query
+                request.Query = ""; 
             }
 
             var (orderDtos, totalCount) = await _orderService.SearchOrdersAsync(request);
@@ -177,5 +173,16 @@ public class OrderController : ControllerBase
             return StatusCode(500, new { Message = "An error occurred while retrieving orders." });
         }
     }
+
+    [HttpGet("summary")]
+    public async Task<IActionResult> GetOrderSummary()
+    {
+        var summary = await _orderService.GetOrderSummaryAsync();
+
+        _logger.LogInformation("Returning order summary: {@Summary}", summary);
+
+        return Ok(summary);
+    }
+
 
 }

@@ -3,5 +3,5 @@
 public class SortCriteria
 {
     public string SortBy { get; set; }
-    public string SortDirection { get; set; } = "asc"; // Default to ascending if not provided
+    public string SortDirection { get; set; } = "asc";
 }

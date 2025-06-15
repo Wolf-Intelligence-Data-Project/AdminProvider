@@ -5,8 +5,6 @@ using System.Security.Claims;
 using System.Text;
 using AdminProvider.ModeratorsManagement.Models.Tokens;
 using AdminProvider.ModeratorsManagement.Interfaces.Services;
-using Microsoft.AspNetCore.Mvc;
-using Microsoft.AspNetCore.Identity;
 using AdminProvider.ModeratorsManagement.Models.Responses;
 using AdminProvider.ModeratorsManagement.Data.Entities;
 
@@ -19,11 +17,11 @@ public class AccessTokenService : IAccessTokenService
     private readonly ILogger<AccessTokenService> _logger;
     private readonly IMemoryCache _memoryCache;
 
-    private static readonly string TokenCacheKey = "AccessToken_"; // Prefix for the cache key
-    private static readonly string BlacklistCacheKey = "Blacklist_"; // Prefix for the blacklist cache key
+    private static readonly string TokenCacheKey = "AccessToken_";
+    private static readonly string BlacklistCacheKey = "Blacklist_";
     private static readonly string IpCacheKey = "IpAddress_";
 
-    private readonly List<string> _cacheKeys = new List<string>(); // Added to track cache keys
+    private readonly List<string> _cacheKeys = new List<string>();
 
     public AccessTokenService(IConfiguration configuration, ILogger<AccessTokenService> logger, IHttpContextAccessor httpContextAccessor, IMemoryCache memoryCache)
     {
@@ -51,7 +49,7 @@ public class AccessTokenService : IAccessTokenService
 
         var claims = new[] {
     new Claim("passwordChosen", admin.PasswordChosen.ToString()),
-    new Claim(ClaimTypes.Role, admin.Role), // This is where the role is stored
+    new Claim(ClaimTypes.Role, admin.Role), 
     new Claim("adminId", admin.AdminId.ToString()),
     new Claim(JwtRegisteredClaimNames.Jti, Guid.NewGuid().ToString())
 };
@@ -72,15 +70,15 @@ public class AccessTokenService : IAccessTokenService
 
         // Store token in memory cache
         _memoryCache.Set(TokenCacheKey + admin.AdminId, tokenString, TimeSpan.FromHours(1));
-        _cacheKeys.Add(TokenCacheKey + admin.AdminId); // Track cache key
+        _cacheKeys.Add(TokenCacheKey + admin.AdminId);
 
-        // Bind IP/GUID to token (Stored with the same expiration)
+        // Bind IP/GUID to token (Same expiration)
         _memoryCache.Set(IpCacheKey + admin.AdminId, userIpInfo.IpAddress, TimeSpan.FromHours(1));
-        _cacheKeys.Add(IpCacheKey + admin.AdminId); // Track IP cache key
+        _cacheKeys.Add(IpCacheKey + admin.AdminId); 
 
         _logger.LogInformation($"Generated new access token for user {admin.FullName}.");
 
-        // Now return HttpOnly cookie instead of just the token string
+        // Return HttpOnly cookie
         _httpContextAccessor.HttpContext?.Response?.Cookies.Append("AccessToken", tokenString, new CookieOptions
         {
             HttpOnly = true,
@@ -96,7 +94,7 @@ public class AccessTokenService : IAccessTokenService
         {
             _logger.LogWarning("There is no role for this admin.");
         }
-        // Now return the response with role and success message
+
         return role;
     }
 
@@ -104,7 +102,6 @@ public class AccessTokenService : IAccessTokenService
     {
         try
         {
-            // Check if HttpContext is available
             if (_httpContextAccessor.HttpContext == null)
             {
                 _logger.LogError("HttpContext is null.");
@@ -115,10 +112,8 @@ public class AccessTokenService : IAccessTokenService
                 };
             }
 
-            // Get token from cookies if not provided
             string token = _httpContextAccessor.HttpContext?.Request?.Cookies["AccessToken"] ?? string.Empty;
 
-            // Check if token is missing or blacklisted
             if (string.IsNullOrEmpty(token) || !CheckBlacklist(token))
             {
                 _logger.LogWarning("Token is either missing or blacklisted.");
@@ -129,7 +124,6 @@ public class AccessTokenService : IAccessTokenService
                 };
             }
 
-            // Initialize JWT token handler and validation parameters
             var handler = new JwtSecurityTokenHandler();
             var validationParameters = new TokenValidationParameters
             {
@@ -142,10 +136,8 @@ public class AccessTokenService : IAccessTokenService
                 IssuerSigningKey = new SymmetricSecurityKey(Encoding.UTF8.GetBytes(_configuration["JwtAccess:Key"]))
             };
 
-            // Validate the token
             var principal = handler.ValidateToken(token, validationParameters, out _);
 
-            // Extract adminId from token claims
             var adminId = principal.Claims.FirstOrDefault(c => c.Type == "adminId")?.Value;
             if (string.IsNullOrEmpty(adminId))
             {
@@ -157,12 +149,10 @@ public class AccessTokenService : IAccessTokenService
                 };
             }
 
-            // Perform IP validation
             var storedIp = _memoryCache.Get<string>(IpCacheKey + adminId);
             var currentIp = GetUserIp().IpAddress;
             bool isAuthenticated = storedIp == null || storedIp == currentIp;
 
-            // Log the result
             _logger.LogInformation($"Token validation successful for Admin ID: {adminId}. IP check: {isAuthenticated}");
 
             return new AuthStatus
@@ -245,7 +235,6 @@ public class AccessTokenService : IAccessTokenService
             ipAddress = _httpContextAccessor.HttpContext?.Connection?.RemoteIpAddress?.ToString();
         }
 
-        // Handle loopback addresses for local dev
         if (ipAddress == "::1" || ipAddress == "127.0.0.1")
         {
             ipAddress = "127.0.0.1";
@@ -253,7 +242,6 @@ public class AccessTokenService : IAccessTokenService
 
         if (string.IsNullOrEmpty(ipAddress))
         {
-            // Generate a GUID as fallback for missing IP
             ipAddress = Guid.NewGuid().ToString();
             _logger.LogInformation($"Generated GUID as fallback: {ipAddress}");
         }
@@ -290,23 +278,24 @@ public class AccessTokenService : IAccessTokenService
             if (blacklistedToken.ExpirationTime > TimeZoneInfo.ConvertTimeFromUtc(DateTime.UtcNow, TimeZoneInfo.FindSystemTimeZoneById("Europe/Stockholm")))
             {
                 _logger.LogWarning("Token is blacklisted.");
-                return false;  // Token is blacklisted
+                return false;
             }
             _memoryCache.Remove(BlacklistCacheKey + token);
         }
-        return true;  // Token is valid
+        return true;
     }
+    #endregion
 
     #region Utilities 
     public void CleanUpExpiredTokens()
     {
         var currentTime = DateTime.Now;
-        foreach (var tokenKey in _cacheKeys)  // Use _cacheKeys to iterate
+        foreach (var tokenKey in _cacheKeys) 
         {
             if (IsTokenExpired(tokenKey, currentTime))
             {
                 _memoryCache.Remove(tokenKey);
-                _memoryCache.Remove(IpCacheKey + tokenKey); // Clean up the associated IP/GUID
+                _memoryCache.Remove(IpCacheKey + tokenKey); 
                 _logger.LogInformation($"Expired token and IP/GUID removed for token: {tokenKey}");
             }
         }
@@ -315,7 +304,6 @@ public class AccessTokenService : IAccessTokenService
     private bool IsTokenExpired(string tokenKey, DateTime currentTime)
     {
         var token = _memoryCache.Get<string>(tokenKey);
-        // Logic to check if the token is expired, for example by parsing the JWT expiration claim
         return token != null && IsJwtExpired(token, currentTime);
     }
 
@@ -325,7 +313,7 @@ public class AccessTokenService : IAccessTokenService
         var jwtToken = handler.ReadToken(token) as JwtSecurityToken;
         if (jwtToken == null)
         {
-            return false; // Invalid token
+            return false; 
         }
 
         var expiration = jwtToken?.Payload?.Expiration?.ToString();
@@ -338,5 +326,5 @@ public class AccessTokenService : IAccessTokenService
     }
     #endregion
 
-    #endregion
+
 }

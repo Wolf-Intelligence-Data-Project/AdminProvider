@@ -3,7 +3,6 @@ using AdminProvider.OrdersManagement.Data.Entities;
 using AdminProvider.OrdersManagement.Interfaces;
 using AdminProvider.OrdersManagement.Models.Requests;
 using Microsoft.EntityFrameworkCore;
-using System.Globalization;
 
 namespace AdminProvider.OrdersManagement.Repositories;
 
@@ -19,7 +18,7 @@ public class OrderRepository : IOrderRepository
 
     public async Task<(List<OrderEntity>, int)> GetAllAsync(int pageNumber, int pageSize)
     {
-        var totalCount = await _orderDbContext.Orders.CountAsync();  // Total orders count
+        var totalCount = await _orderDbContext.Orders.CountAsync(); 
 
         var orders = await _orderDbContext.Orders
             .Skip((pageNumber - 1) * pageSize)
@@ -38,10 +37,8 @@ public class OrderRepository : IOrderRepository
     {
         var queryable = _orderDbContext.Orders.AsQueryable();
 
-        // Log query to verify the incoming query is '*'
         _logger.LogInformation("Query received for search: {Query}", query);
 
-        // Apply sorting based on SortCriteria
         if (sortCriteria != null && sortCriteria.Any())
         {
             IOrderedQueryable<OrderEntity>? orderedQuery = null;
@@ -57,14 +54,12 @@ public class OrderRepository : IOrderRepository
                 {
                     if (index == 0)
                     {
-                        // First sort condition
                         orderedQuery = sortDirection == "asc"
                             ? queryable.OrderBy(e => EF.Property<object>(e, sortBy))
                             : queryable.OrderByDescending(e => EF.Property<object>(e, sortBy));
                     }
                     else if (orderedQuery != null)
                     {
-                        // Subsequent sort conditions
                         orderedQuery = sortDirection == "asc"
                             ? orderedQuery.ThenBy(e => EF.Property<object>(e, sortBy))
                             : orderedQuery.ThenByDescending(e => EF.Property<object>(e, sortBy));
@@ -83,11 +78,10 @@ public class OrderRepository : IOrderRepository
         }
         else
         {
-            // Default sort by CreatedAt in descending order (latest to oldest)
+
             queryable = queryable.OrderByDescending(o => o.CreatedAt);
         }
 
-        // Handle query == "*" or empty to return all orders
         if (string.IsNullOrWhiteSpace(query) || query == "*")
         {
             _logger.LogInformation("Fetching all orders (no query filter applied).");
@@ -110,7 +104,6 @@ public class OrderRepository : IOrderRepository
             queryable = queryable.Where(o => o.CreatedAt <= DateTime.Parse(endDate));
         }
 
-        // Get the total count before pagination
         var totalCount = await queryable.CountAsync();
 
         // Apply pagination
@@ -121,17 +114,22 @@ public class OrderRepository : IOrderRepository
         return (orders, totalCount);
     }
 
-    // New method to fetch all orders with pagination
-    private async Task<(List<OrderEntity> Orders, int TotalCount)> GetAllOrders(int pageNumber, int pageSize)
+
+    public async Task<int> CountOrdersSinceAsync(DateTime since, DateTime? until = null)
     {
-        var orders = await _orderDbContext.Orders
-            .Skip((pageNumber - 1) * pageSize)
-            .Take(pageSize)
-            .ToListAsync();
+        var query = _orderDbContext.Orders.Where(o => o.CreatedAt >= since);
 
-        var totalCount = await _orderDbContext.Orders.CountAsync();
+        if (until.HasValue)
+        {
+            query = query.Where(o => o.CreatedAt < until.Value);
+        }
 
-        return (orders, totalCount);
+        return await query.CountAsync();
+    }
+
+    public async Task<int> CountAllOrdersAsync()
+    {
+        return await _orderDbContext.Orders.CountAsync();
     }
 
 
@@ -148,16 +146,14 @@ public class OrderRepository : IOrderRepository
     }
     public async Task<Dictionary<Guid, int>> GetOrderCountsForCustomerIdsAsync(List<Guid> customerIds)
     {
-        // Ensure customerIds is not empty
         if (customerIds == null || customerIds.Count == 0)
         {
             return new Dictionary<Guid, int>();
         }
 
-        // Fetch order counts for all customer IDs in one query
         var orderCounts = await _orderDbContext.Orders
-            .Where(o => customerIds.Contains(o.CustomerId)) // Filter orders by customer IDs
-            .GroupBy(o => o.CustomerId) // Group by CustomerId
+            .Where(o => customerIds.Contains(o.CustomerId))
+            .GroupBy(o => o.CustomerId)
             .Select(g => new
             {
                 CustomerId = g.Key,
@@ -165,22 +161,21 @@ public class OrderRepository : IOrderRepository
             })
             .ToListAsync();
 
-        // Convert to a dictionary for easy lookup by customer ID
         return orderCounts.ToDictionary(x => x.CustomerId, x => x.OrderCount);
     }
 
     public async Task<List<OrderEntity>> GetByCustomerIdAsync(Guid customerId)
     {
         return await _orderDbContext.Orders
-            .Where(o => o.CustomerId == customerId && o.PaymentStatus != "Pending") // Exclude pending orders
+            .Where(o => o.CustomerId == customerId && o.PaymentStatus != "Pending")
             .ToListAsync();
     }
 
     public async Task<List<OrderEntity>> GetByDateRangeAsync(DateTime fromDate, DateTime toDate)
     {
         return await _orderDbContext.Orders
-            .Where(o => o.CreatedAt >= fromDate && o.CreatedAt <= toDate) // Filter orders by date range
-            .OrderBy(o => o.CreatedAt) // Sort by creation date
+            .Where(o => o.CreatedAt >= fromDate && o.CreatedAt <= toDate)
+            .OrderBy(o => o.CreatedAt)
             .ToListAsync();
     }
 

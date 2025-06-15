@@ -27,10 +27,8 @@ public class ProductController : ControllerBase
     {
         try
         {
-            // Assuming _productService.GetProductsCountAsync() returns an object with total, unsold, and sold counts
             var count = await _productService.GetProductsCountAsync();
 
-            // Create a ProductsCountResponse instance with the retrieved data
             var response = new ProductsCountResponse
             {
                 TotalProductsCount = count.TotalProductsCount,
@@ -41,7 +39,6 @@ public class ProductController : ControllerBase
             _logger.LogInformation("Product counts retrieved: Total = {Total}, Unsold = {Unsold}, Sold = {Sold}",
           response.TotalProductsCount, response.UnsoldProductsCount, response.SoldProductsCount);
 
-            // Return the response model
             return Ok(response);
         }
         catch (Exception ex)

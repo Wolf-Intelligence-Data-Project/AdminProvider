@@ -31,7 +31,6 @@ public class UserController : ControllerBase
     {
         var (userDtos, totalCount, companyCount) = await _userService.GetAllUsers(pageNumber, pageSize);
 
-        // Log the fetched data
         _logger.LogInformation("Fetched {UserCount} users, TotalCount: {TotalCount}, CompanyCount: {CompanyCount}",
                                 userDtos.Count, totalCount, companyCount);
 
@@ -90,7 +89,7 @@ public class UserController : ControllerBase
 
         try
         {
-            var userDetailsDto = await _userService.GetUserAsync(request.SearchQuery); // Get a list
+            var userDetailsDto = await _userService.GetUserAsync(request.SearchQuery);
 
             if (userDetailsDto == null)
             {
@@ -128,7 +127,7 @@ public class UserController : ControllerBase
         {
             string updatedNote = await _userService.UpdateAdminNote(userNoteUpdateRequest);
 
-            if (!string.IsNullOrEmpty(updatedNote))  // ✅ Corrected check
+            if (!string.IsNullOrEmpty(updatedNote)) 
             {
                 return Ok(new { updatedNote, Message = "Admin note updated successfully." });
             }

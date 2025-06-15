@@ -30,13 +30,13 @@ public class ProductService : IProductService
             throw new ArgumentException("The uploaded file is empty or null.");
         }
 
-        ExcelPackage.LicenseContext = LicenseContext.NonCommercial; // Fix for EPPlus License Issue
+        ExcelPackage.LicenseContext = LicenseContext.NonCommercial; 
 
         using var stream = new MemoryStream();
-        await file.CopyToAsync(stream); // Read file into memory
-        stream.Position = 0; // Reset the stream position to the beginning
+        await file.CopyToAsync(stream);
+        stream.Position = 0; 
 
-        using var package = new ExcelPackage(stream); // Load the Excel package from the memory stream
+        using var package = new ExcelPackage(stream); 
         var worksheet = package.Workbook.Worksheets[0];
 
         if (worksheet == null)
@@ -50,12 +50,11 @@ public class ProductService : IProductService
             throw new InvalidOperationException("The uploaded file does not contain enough data.");
         }
 
-        // Map column headers with trimming and case-insensitivity
         var headers = new Dictionary<string, int>();
         for (int col = 1; col <= worksheet.Dimension?.Columns; col++)
         {
-            var header = worksheet.Cells[1, col].Text?.Trim().ToLower(); // Normalize header text
-            if (!string.IsNullOrEmpty(header)) // Ensure the header is not null or empty
+            var header = worksheet.Cells[1, col].Text?.Trim().ToLower();
+            if (!string.IsNullOrEmpty(header))
             {
                 headers[header] = col;
             }
@@ -151,13 +150,13 @@ public class ProductService : IProductService
                 decimal decimalValue => decimalValue,
                 int intValue => (decimal)intValue,
                 double doubleValue => (decimal)doubleValue,
-                _ => 0m // Default to 0 if unsupported type
+                _ => 0m 
             };
         }
         catch (Exception ex)
         {
             _logger.LogError(ex, "Error converting value to decimal.");
-            return 0m; // Default to 0 if any errors occur
+            return 0m;
         }
     }
 }

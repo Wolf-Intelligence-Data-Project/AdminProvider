@@ -42,30 +42,24 @@ public class AuthController : ControllerBase
             return BadRequest(new { Success = false, ErrorMessage = "Ogiltig inloggningsförfrågan." });
         }
 
-        // Check if the user needs to change their password
         var moderators = _configuration.GetSection("Admins").Get<List<AdminEntity>>() ?? new List<AdminEntity>();
 
-        // Find the specific admin, e.g., by AdminId or Email
-        var admin = moderators.FirstOrDefault(m => m.Email == signInRequest.Email); // Replace 'someAdminId' with the actual AdminId you're checking
+        var admin = moderators.FirstOrDefault(m => m.Email == signInRequest.Email);
 
         if (admin == null)
         {
             return NotFound("Admin not found.");
         }
 
-        // Check if the password is chosen
         if (!admin.PasswordChosen)
         {
-            // Send the email (or user ID) so the frontend knows which user it is
             return BadRequest(new
             {
                 message = "You need to change your password first.",
                 redirectToChangePassword = true,
-                adminId = admin.AdminId  // This identifies which admin needs to change their password
+                adminId = admin.AdminId 
             });
         }
-
-        // Continue with normal login or process...
 
         var signInResponse = await _signInService.SignInAsync(signInRequest);
 
@@ -74,10 +68,8 @@ public class AuthController : ControllerBase
             return Unauthorized(new { Success = false, ErrorMessage = signInResponse.ErrorMessage });
         }
 
-        // Log the full response
         _logger.LogInformation("Sign-in response: {@SignInResponse}", signInResponse);
 
-        // Token is already set in cookie inside GenerateAccessToken
         return Ok(signInResponse);
     }
 
@@ -133,7 +125,7 @@ public class AuthController : ControllerBase
             await _adminService.PasswordChangeFirstTime(request);
 
             _logger.LogInformation("✅ Password change process completed successfully.");
-            return Ok(new { success = true, message = "Lösenordet har ändrats." });  // Ensure JSON response
+            return Ok(new { success = true, message = "Lösenordet har ändrats." });
         }
         catch (Exception ex)
         {
@@ -141,8 +133,6 @@ public class AuthController : ControllerBase
             return StatusCode(500, new { success = false, message = "Ett fel uppstod vid ändring av lösenord." });
         }
     }
-
-
 
     /// <summary>
     /// Checks the authentication status of the currently logged-in user.
@@ -160,7 +150,6 @@ public class AuthController : ControllerBase
             return BadRequest(new { message = "Åtkomsttoken saknas." });
         }
 
-        // Call the service to check the authentication and role
         var authStatus = _accessTokenService.ValidateAccessToken();
 
         if (authStatus.IsAuthenticated)
@@ -169,7 +158,6 @@ public class AuthController : ControllerBase
         }
         else
         {
-            // If authentication fails, return unauthorized
             return Unauthorized(new { isAuthenticated = false, errorMessage = "Authentication failed or token is invalid." });
         }
     }
